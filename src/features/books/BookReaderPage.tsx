@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Document, Page, pdfjs } from "react-pdf";
 import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { isAxiosError } from "axios";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { Heart } from "lucide-react";
+import { toast } from "react-toastify";
 import api from "../../services/api";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -11,6 +13,8 @@ type ProgressResponse = {
   currentPage?: number;
   currentChapter?: number;
   progressPercentage?: number;
+  isFavorite?: boolean;
+  favorite?: boolean;
 };
 
 const UPDATE_DEBOUNCE_MS = 700;
@@ -27,6 +31,7 @@ const normalizePage = (value: number) => Math.max(1, Math.floor(value));
 const useBookProgress = (bookId: number | null) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [currentChapter, setCurrentChapter] = useState(0);
+  const [isFavorite, setIsFavorite] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,19 +60,28 @@ const useBookProgress = (bookId: number | null) => {
         const chapter = Number.isFinite(data?.currentChapter)
           ? Math.max(0, Math.floor(data?.currentChapter ?? 0))
           : 0;
+        const favorite =
+          typeof data?.isFavorite === "boolean"
+            ? data.isFavorite
+            : typeof data?.favorite === "boolean"
+              ? data.favorite
+              : null;
 
         setCurrentPage(page);
         setCurrentChapter(chapter);
+        setIsFavorite(favorite);
       })
       .catch((error) => {
         if (cancelled) return;
         if (isAxiosError(error) && error.response?.status === 404) {
           setCurrentPage(1);
           setCurrentChapter(0);
+          setIsFavorite(null);
           return;
         }
         setCurrentPage(1);
         setCurrentChapter(0);
+        setIsFavorite(null);
         setError("O'qish holatini yuklashda xatolik yuz berdi.");
       })
       .finally(() => {
@@ -84,6 +98,8 @@ const useBookProgress = (bookId: number | null) => {
     setCurrentPage,
     currentChapter,
     setCurrentChapter,
+    isFavorite,
+    setIsFavorite,
     loading,
     error,
     setError,
@@ -169,6 +185,7 @@ const usePdfFile = (bookId: number | null) => {
 
 const BookReaderPage: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();
+  const navigate = useNavigate();
   const parsedBookId = Number(bookId);
   const bookIdNumber =
     Number.isFinite(parsedBookId) && parsedBookId > 0 ? parsedBookId : null;
@@ -181,11 +198,14 @@ const BookReaderPage: React.FC = () => {
     loading: progressLoading,
     error: progressError,
     setError: setProgressError,
+    isFavorite,
+    setIsFavorite,
   } = useBookProgress(bookIdNumber);
 
   const [numPages, setNumPages] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const progressDebounceRef = useRef<number | null>(null);
@@ -196,6 +216,60 @@ const BookReaderPage: React.FC = () => {
 
   const isBusy = pdfLoading || progressLoading;
   const fatalError = pdfError;
+
+  const startSession = useCallback(
+    async (force = false) => {
+      if (!bookIdNumber || progressLoading) return;
+      if (!force && sessionStartedRef.current) return;
+      sessionStartedRef.current = true;
+      try {
+        const { data } = await api.post("/api/books/sessions/start", {
+          bookId: bookIdNumber,
+          currentPage: currentPageRef.current,
+        });
+        const sessionId = data?.sessionId;
+        sessionIdRef.current =
+          typeof sessionId === "number" ? sessionId : null;
+      } catch {
+        if (!force) {
+          sessionStartedRef.current = false;
+        }
+      }
+    },
+    [bookIdNumber, progressLoading],
+  );
+
+  const endSession = useCallback(
+    async (useBeacon: boolean) => {
+      if (!bookIdNumber) return;
+      const endPage = currentPageRef.current;
+      const sessionId = sessionIdRef.current;
+      const endpoint = sessionId
+        ? "/api/books/sessions/end"
+        : "/api/books/sessions/end-active";
+      const payload = sessionId
+        ? { sessionId, endPage }
+        : { endPage };
+
+      if (useBeacon) {
+        const baseUrl = api.defaults.baseURL ?? "";
+        const token = localStorage.getItem("accessToken");
+        fetch(`${baseUrl}${endpoint}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        }).catch(() => undefined);
+        return;
+      }
+
+      await api.post(endpoint, payload).catch(() => undefined);
+    },
+    [bookIdNumber],
+  );
 
   useEffect(() => {
     if (!bookIdNumber || startReadingRef.current) return;
@@ -210,62 +284,26 @@ const BookReaderPage: React.FC = () => {
   }, [currentPage]);
 
   useEffect(() => {
-    if (!bookIdNumber || progressLoading || sessionStartedRef.current) return;
-    sessionStartedRef.current = true;
-    api
-      .post("/api/books/sessions/start", {
-        bookId: bookIdNumber,
-        currentPage,
-      })
-      .then(({ data }) => {
-        const sessionId = data?.sessionId;
-        sessionIdRef.current =
-          typeof sessionId === "number" ? sessionId : null;
-      })
-      .catch(() => {
-        sessionStartedRef.current = false;
-      });
-  }, [bookIdNumber, currentPage, progressLoading]);
+    void startSession(false);
+  }, [startSession]);
 
   useEffect(() => {
     if (!bookIdNumber) return;
-    const baseUrl = api.defaults.baseURL ?? "";
-
-    const sendEndSession = (useBeacon: boolean) => {
-      const endPage = currentPageRef.current;
-      const sessionId = sessionIdRef.current;
-      const endpoint = sessionId
-        ? "/api/books/sessions/end"
-        : "/api/books/sessions/end-active";
-      const payload = sessionId
-        ? { sessionId, endPage }
-        : { endPage };
-
-      if (useBeacon) {
-        const token = localStorage.getItem("accessToken");
-        fetch(`${baseUrl}${endpoint}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(payload),
-          keepalive: true,
-        }).catch(() => undefined);
-        return;
-      }
-
-      api.post(endpoint, payload).catch(() => undefined);
+    const handleBeforeUnload = () => {
+      void endSession(true);
     };
-
-    const handleBeforeUnload = () => sendEndSession(true);
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      sendEndSession(false);
+      void endSession(false);
     };
-  }, [bookIdNumber]);
+  }, [bookIdNumber, endSession]);
+
+  const handleCloseReader = useCallback(async () => {
+    await endSession(false);
+    navigate("/books");
+  }, [endSession, navigate]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -372,6 +410,30 @@ const BookReaderPage: React.FC = () => {
   const canGoPrev = !isBusy && currentPage > 1;
   const canGoNext = !isBusy && numPages != null && currentPage < numPages;
 
+  const toggleFavorite = useCallback(async () => {
+    if (!bookIdNumber || favoriteLoading) return;
+    const previous = isFavorite ?? false;
+    setFavoriteLoading(true);
+    setIsFavorite(!previous);
+
+    try {
+      const { data } = await api.post(`/api/books/${bookIdNumber}/favorite`);
+      const nextValue =
+        typeof data?.isFavorite === "boolean"
+          ? data.isFavorite
+          : typeof data?.favorite === "boolean"
+            ? data.favorite
+            : !previous;
+      setIsFavorite(nextValue);
+      toast.success(nextValue ? "Sevimlilarga qo'shildi." : "Sevimlilardan olib tashlandi.");
+    } catch {
+      setIsFavorite(previous);
+      toast.error("Sevimlilarni yangilashda xatolik yuz berdi.");
+    } finally {
+      setFavoriteLoading(false);
+    }
+  }, [bookIdNumber, favoriteLoading, isFavorite, setIsFavorite]);
+
   return (
     <section className="min-h-screen px-4 py-6">
       <div className="mx-auto flex max-w-6xl flex-col gap-4">
@@ -398,6 +460,36 @@ const BookReaderPage: React.FC = () => {
           <div className="text-sm font-semibold text-[#2B2B2B]">{pageLabel}</div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void startSession(true)}
+              className="rounded-lg border border-[#E3DBCF] px-3 py-1.5 text-xs font-semibold text-[#6B6B6B] transition hover:bg-[#F5F1E8]"
+            >
+              Start reading
+            </button>
+            <button
+              type="button"
+              onClick={toggleFavorite}
+              disabled={favoriteLoading || !bookIdNumber}
+              className="inline-flex items-center gap-2 rounded-lg border border-[#E3DBCF] px-3 py-1.5 text-xs font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-60"
+            >
+              <Heart
+                size={14}
+                className={
+                  isFavorite
+                    ? "fill-[#6B4F3A] text-[#6B4F3A]"
+                    : "text-[#6B4F3A]"
+                }
+              />
+              {isFavorite ? "Sevimlida" : "Sevimliga"}
+            </button>
+            <button
+              type="button"
+              onClick={handleCloseReader}
+              className="rounded-lg border border-[#E3DBCF] px-3 py-1.5 text-xs font-semibold text-[#6B6B6B] transition hover:bg-[#F5F1E8]"
+            >
+              Close reader
+            </button>
             <button
               type="button"
               onClick={zoomOut}
