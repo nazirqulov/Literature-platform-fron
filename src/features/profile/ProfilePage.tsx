@@ -47,7 +47,7 @@ const ProfilePage: React.FC = () => {
 
                     <div className="flex-grow text-center md:text-left space-y-4">
                         <div>
-                            <h1 className="text-3xl font-bold text-[#2B2B2B] uppercase tracking-tight">
+                            <h1 className="text-2xl font-bold uppercase tracking-tight text-[#2B2B2B] sm:text-3xl">
                                 {user.fullName || user.username}
                             </h1>
                             <p className="text-[#6B6B6B] font-mono text-sm">{user.email}</p>

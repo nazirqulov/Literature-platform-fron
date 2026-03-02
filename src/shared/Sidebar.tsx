@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BookOpen, Users, UserPen, User, Tags } from "lucide-react";
+import { BookOpen, Users, UserPen, User, Tags, X } from "lucide-react";
 import { useAuth } from "../context/useAuth";
 
 type SidebarItemProps = {
@@ -33,7 +33,12 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   );
 };
 
-const Sidebar: React.FC = () => {
+type SidebarProps = {
+  isOpen?: boolean;
+  onClose?: () => void;
+};
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const { user } = useAuth();
   const location = useLocation();
 
@@ -53,24 +58,66 @@ const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="sticky top-0 h-screen w-72 bg-white text-[#2B2B2B] border-r border-[#E3DBCF]">
-      <nav className="flex h-full flex-col gap-4 px-4 py-6">
-        <div className="space-y-1">
-          {items.map((item) => {
-            const isActive = location.pathname.startsWith(item.to);
-            return (
-              <SidebarItem
-                key={item.to}
-                to={item.to}
-                label={item.label}
-                icon={item.icon}
-                isActive={isActive}
-              />
-            );
-          })}
+    <>
+      <aside className="hidden h-screen w-72 border-r border-[#E3DBCF] bg-white text-[#2B2B2B] lg:sticky lg:top-0 lg:block">
+        <nav className="flex h-full flex-col gap-4 px-4 py-6">
+          <div className="space-y-1">
+            {items.map((item) => {
+              const isActive = location.pathname.startsWith(item.to);
+              return (
+                <SidebarItem
+                  key={item.to}
+                  to={item.to}
+                  label={item.label}
+                  icon={item.icon}
+                  isActive={isActive}
+                />
+              );
+            })}
+          </div>
+        </nav>
+      </aside>
+
+      {isOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            onClick={onClose}
+            className="absolute inset-0 bg-black/40"
+            aria-label="Sidebarni yopish"
+          />
+          <aside className="absolute left-0 top-0 h-full w-72 border-r border-[#E3DBCF] bg-white text-[#2B2B2B] shadow-2xl">
+            <nav className="flex h-full flex-col gap-4 px-4 py-6">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-[#2B2B2B]">
+                  Admin menyu
+                </span>
+                <button
+                  onClick={onClose}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E3DBCF] text-[#6B6B6B]"
+                  aria-label="Sidebarni yopish"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="space-y-1">
+                {items.map((item) => {
+                  const isActive = location.pathname.startsWith(item.to);
+                  return (
+                    <SidebarItem
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                      icon={item.icon}
+                      isActive={isActive}
+                    />
+                  );
+                })}
+              </div>
+            </nav>
+          </aside>
         </div>
-      </nav>
-    </aside>
+      )}
+    </>
   );
 };
 

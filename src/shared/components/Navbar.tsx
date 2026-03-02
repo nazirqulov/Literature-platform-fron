@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
-import { LogOut, User, Library, Moon, Sun } from 'lucide-react';
+import { LogOut, User, Library, Moon, Sun, Menu, X } from 'lucide-react';
 import { useTheme } from '../../context/useTheme';
 import api from '../../services/api';
 
@@ -26,6 +26,7 @@ const Navbar: React.FC = () => {
     const location = useLocation();
     const isAdminRoute = location.pathname.startsWith('/admin');
     const [categories, setCategories] = useState<CategoryItem[]>([]);
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     useEffect(() => {
         if (!isAuthenticated || isAdminRoute) return;
@@ -57,14 +58,18 @@ const Navbar: React.FC = () => {
         }));
     }, [categories]);
 
+    useEffect(() => {
+        setMobileOpen(false);
+    }, [location.pathname]);
+
     return (
         <nav className="sticky top-0 z-50 glass border-b border-[#E3DBCF] px-4 py-3">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
                 <Link to={isAdminRoute ? "/admin" : "/"} className="flex items-center gap-2 group">
                     <div className="p-2 bg-[#6B4F3A] rounded-lg group-hover:rotate-12 transition-transform">
                         <Library size={20} className="text-[#F5F1E8]" />
                     </div>
-                    <span className="text-xl font-bold bg-gradient-to-r from-[#8FA68E] to-[#6B4F3A] bg-clip-text text-transparent">
+                    <span className="hidden text-xl font-bold bg-gradient-to-r from-[#8FA68E] to-[#6B4F3A] bg-clip-text text-transparent sm:inline">
                         O'zbek Adabiyoti
                     </span>
                 </Link>
@@ -121,8 +126,8 @@ const Navbar: React.FC = () => {
                     </div>
                 )}
 
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center rounded-full border border-[#E3DBCF] bg-white p-1 text-xs">
+                <div className="flex items-center gap-3">
+                    <div className="hidden items-center rounded-full border border-[#E3DBCF] bg-white p-1 text-xs sm:flex">
                         <button
                             onClick={() => setTheme('light')}
                             className={[
@@ -148,8 +153,15 @@ const Navbar: React.FC = () => {
                             <Moon size={14} /> Qorong'u
                         </button>
                     </div>
+                    <button
+                        onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E3DBCF] bg-white text-[#6B6B6B] transition hover:text-[#2B2B2B] sm:hidden"
+                        aria-label="Tema almashtirish"
+                    >
+                        {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+                    </button>
                     {isAuthenticated ? (
-                        <div className="flex items-center gap-4">
+                        <div className="hidden items-center gap-4 sm:flex">
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#E3DBCF]">
                                 <User size={16} className="text-[#6B4F3A]" />
                                 <span className="text-sm font-medium">{user?.username}</span>
@@ -163,7 +175,7 @@ const Navbar: React.FC = () => {
                             </button>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="hidden items-center gap-2 sm:flex">
                             <Link to="/login" className="px-4 py-2 text-[#6B6B6B] hover:text-[#2B2B2B] transition-colors">
                                 Kirish
                             </Link>
@@ -172,8 +184,112 @@ const Navbar: React.FC = () => {
                             </Link>
                         </div>
                     )}
+
+                    {!isAdminRoute && (
+                        <button
+                            onClick={() => setMobileOpen(true)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E3DBCF] bg-white text-[#6B6B6B] transition hover:text-[#2B2B2B] md:hidden"
+                            aria-label="Menyuni ochish"
+                        >
+                            <Menu size={18} />
+                        </button>
+                    )}
                 </div>
             </div>
+
+            {!isAdminRoute && mobileOpen && (
+                <div className="fixed inset-0 z-50 md:hidden">
+                    <button
+                        onClick={() => setMobileOpen(false)}
+                        className="absolute inset-0 bg-black/40"
+                        aria-label="Menyuni yopish"
+                    />
+                    <div className="absolute right-0 top-0 flex h-full w-[85%] max-w-sm flex-col gap-4 bg-white px-5 py-6 shadow-2xl">
+                        <div className="flex items-center justify-between">
+                            <span className="text-lg font-semibold text-[#2B2B2B]">Menyu</span>
+                            <button
+                                onClick={() => setMobileOpen(false)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E3DBCF] text-[#6B6B6B]"
+                                aria-label="Menyuni yopish"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {!isAuthenticated ? (
+                            <div className="space-y-3">
+                                <a href="/#home" className="block text-sm text-[#2B2B2B]">
+                                    Bosh sahifa
+                                </a>
+                                <a href="/#books" className="block text-sm text-[#2B2B2B]">
+                                    Kitoblar
+                                </a>
+                                <a href="/#authors" className="block text-sm text-[#2B2B2B]">
+                                    Mualliflar
+                                </a>
+                                <div className="flex items-center gap-2 pt-2">
+                                    <Link to="/login" className="rounded-lg border border-[#E3DBCF] px-3 py-2 text-sm text-[#6B6B6B]">
+                                        Kirish
+                                    </Link>
+                                    <Link to="/register" className="btn-primary text-sm">
+                                        Ro'yxatdan o'tish
+                                    </Link>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <Link to="/dashboard" className="block text-sm text-[#2B2B2B]">
+                                    Bosh sahifa
+                                </Link>
+                                <Link to="/books" className="block text-sm text-[#2B2B2B]">
+                                    Kitoblar
+                                </Link>
+                                <Link to="/profile" className="block text-sm text-[#2B2B2B]">
+                                    Profil
+                                </Link>
+                                <button
+                                    onClick={logout}
+                                    className="inline-flex items-center gap-2 text-sm text-[#6B6B6B]"
+                                >
+                                    <LogOut size={16} /> Chiqish
+                                </button>
+                            </div>
+                        )}
+
+                        {categoryGroups.length > 0 && (
+                            <div className="space-y-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-[#6B6B6B]">
+                                    Kategoriyalar
+                                </p>
+                                <div className="no-scrollbar max-h-64 space-y-3 overflow-auto pr-1">
+                                    {categoryGroups.map((group) => (
+                                        <div key={group.name} className="space-y-2">
+                                            <p className="text-xs font-semibold text-[#6B6B6B]">
+                                                {group.name}
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {group.children.length === 0 ? (
+                                                    <span className="text-xs text-[#9A9A9A]">Subcategory yo'q</span>
+                                                ) : (
+                                                    group.children.map((child) => (
+                                                        <Link
+                                                            key={`${group.name}-${child}`}
+                                                            to={`/books?sub=${encodeURIComponent(child)}`}
+                                                            className="rounded-full border border-[#E3DBCF] bg-[#F5F1E8] px-3 py-1 text-xs text-[#2B2B2B]"
+                                                        >
+                                                            {child}
+                                                        </Link>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </nav>
     );
 };
