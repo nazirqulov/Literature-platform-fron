@@ -8,20 +8,20 @@ const UserDashboard: React.FC = () => {
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-12 space-y-10">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <header className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
                 <div className="space-y-2">
-                    <h1 className="text-4xl font-bold text-[#2B2B2B] uppercase tracking-tight">
+                    <h1 className="text-3xl font-bold uppercase tracking-tight text-[#2B2B2B] sm:text-4xl">
                         Xush kelibsiz, <span className="text-[#6B4F3A]">{user?.username}</span>!
                     </h1>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:gap-4">
                         <p className="text-[#6B6B6B] italic">Sizning mutolaa olamingiz</p>
-                        <span className="text-[#6B6B6B]">|</span>
-                        <Link to="/profile" className="text-[#6B4F3A]/80 hover:text-[#6B4F3A] text-sm font-medium transition-colors border-b border-[#6B4F3A]/30">
+                        <span className="hidden text-[#6B6B6B] sm:inline">|</span>
+                        <Link to="/profile" className="text-[#6B4F3A]/80 hover:text-[#6B4F3A] font-medium transition-colors border-b border-[#6B4F3A]/30 w-fit">
                             Profilni boshqarish
                         </Link>
                     </div>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-4">
                     <div className="glass px-6 py-3 rounded-2xl flex items-center gap-3">
                         <div className="p-2 bg-[#6B4F3A]/15 rounded-lg">
                             <Award className="text-[#6B4F3A]" size={20} />
@@ -79,15 +79,15 @@ const UserDashboard: React.FC = () => {
             <div className="grid lg:grid-cols-3 gap-10">
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-8">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
                         <h2 className="text-2xl font-bold text-[#2B2B2B]">So'nggi o'qilganlar</h2>
                         <button className="text-[#6B4F3A] text-sm hover:underline">Barchasi</button>
                     </div>
 
                     <div className="space-y-4">
                         {[1, 2].map((i) => (
-                            <div key={i} className="glass p-4 rounded-2xl flex items-center gap-6 group hover:border-[#6B4F3A]/30 transition-all cursor-pointer">
-                                <div className="w-16 h-24 rounded-lg bg-white border border-[#E3DBCF] flex-shrink-0"></div>
+                            <div key={i} className="glass p-4 rounded-2xl flex flex-col gap-4 group hover:border-[#6B4F3A]/30 transition-all cursor-pointer sm:flex-row sm:items-center sm:gap-6">
+                                <div className="h-24 w-16 flex-shrink-0 rounded-lg border border-[#E3DBCF] bg-white"></div>
                                 <div className="flex-grow space-y-1">
                                     <h3 className="font-semibold text-[#2B2B2B] text-lg">O'tkan kunlar</h3>
                                     <p className="text-[#6B6B6B] text-sm">Abdulla Qodiriy</p>
@@ -95,7 +95,7 @@ const UserDashboard: React.FC = () => {
                                         <div className="bg-[#6B4F3A] h-full w-2/3"></div>
                                     </div>
                                 </div>
-                                <div className="p-2 text-[#9A9A9A] group-hover:text-[#6B4F3A] transition-colors">
+                                <div className="self-end p-2 text-[#9A9A9A] transition-colors group-hover:text-[#6B4F3A] sm:self-auto">
                                     <ChevronRight size={24} />
                                 </div>
                             </div>

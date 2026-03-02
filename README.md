@@ -1,20 +1,25 @@
 # Literature Platform Frontend
 
-O'zbek adabiyotini raqamlashtirish va global auditoriya uchun interaktiv platforma.
-Ushbu frontend foydalanuvchilar uchun mutolaa muhiti, profil boshqaruvi va
-admin panel orqali kontentni boshqarishni ta'minlaydi.
+O'zbek adabiyotini raqamlashtirishga qaratilgan platformaning frontend qismi.
+Foydalanuvchilarga kitoblarni o'qish, progressni saqlash, sevimlilarga qo'shish
+va reyting qoldirish imkonini beradi. Admin panel orqali kontent boshqariladi.
 
-## Asosiy funksiyalar
+## Asosiy imkoniyatlar
 
-- Mehmonlar uchun landing sahifa (hero + loyihaga kirish).
-- Foydalanuvchi autentifikatsiyasi (login/registratsiya, email tasdiqlash).
-- Foydalanuvchi profili va profil rasmi upload.
+- Landing (guest) sahifa, mualliflar va saralangan kitoblar bloklari.
+- Autentifikatsiya: ro'yxatdan o'tish, login, email tasdiqlash.
+- Profil va profil rasmi boshqaruvi.
+- PDF reader:
+  - Progress GET/PUT (sahifa, bob).
+  - O'qish sessiyasi start/end.
+  - Sevimliga qo'shish (toggle).
+  - Reyting va fikr qoldirish.
+  - Zoom, sahifa o'zgartirish, loading va error holatlari.
 - Admin panel (SUPERADMIN):
-  - Kitoblar: yaratish, tahrirlash, muqova rasmi upload, ro'yxat/pagination.
-  - Foydalanuvchilar: yaratish, tahrirlash, o'chirish, filtr/pagination.
-  - Mualliflar: CRUD.
-  - Kategoriyalar: CRUD + subcategory.
-- Light/Dark theme (tab orqali almashish).
+  - Kitoblar CRUD, muqova va PDF upload.
+  - PDF yuklanganda sahifa sonini avtomatik aniqlash.
+  - Mualliflar, kategoriyalar, foydalanuvchilar boshqaruvi.
+- Mobil + noutbuk uchun responsiv dizayn.
 
 ## Texnologiyalar
 
@@ -25,6 +30,7 @@ admin panel orqali kontentni boshqarishni ta'minlaydi.
 - React Router
 - React Hook Form + Yup
 - React Toastify
+- React PDF (pdf.js)
 
 ## Ishga tushirish
 
@@ -33,26 +39,52 @@ npm install
 npm run dev
 ```
 
-## Muhim eslatmalar
+Brauzer: `http://localhost:5173`
 
-- Backend base URL: `http://localhost:8080`
-- Avtorizatsiya: `Authorization: Bearer <token>`
-- Admin panel faqat `SUPERADMIN` roliga ochiq.
+## Backend sozlamalari
 
-## Loyihaning tuzilishi (qisqa)
+API base URL `src/services/api.ts` ichida:
 
-- `src/features/auth` — login/registratsiya/email tasdiqlash.
-- `src/features/dashboard` — guest/user dashboard.
-- `src/features/profile` — profil va rasm upload.
-- `src/features/admin` — admin panel bo'limlari.
-- `src/shared` — umumiy UI komponentlar (Navbar, Sidebar, Route guards).
-- `src/context` — Auth va Theme context.
-- `src/services` — axios client.
+```ts
+const API_URL = "http://localhost:8080";
+```
+
+Backend manzili o'zgarsa shu yerda yangilang.
+
+## Muhim routelar
+
+- `/books` — kitoblar ro'yxati
+- `/books/:bookId/read` — PDF reader
+- `/profile` — foydalanuvchi profili
+- `/admin/*` — admin panel
+
+## PDF Reader qisqacha
+
+Reader sahifasi:
+
+- GET `/api/books/{bookId}/progress`
+- PUT `/api/books/{bookId}/progress` (debounce bilan)
+- POST `/api/books/{bookId}/start`
+- POST `/api/books/sessions/start`
+- POST `/api/books/sessions/end` yoki `/api/books/sessions/end-active`
+- POST `/api/books/{bookId}/favorite`
+- POST `/api/books/{bookId}/rating`
+
+## Admin PDF upload
+
+Admin panelda PDF yuklash:
+
+- `/api/books/file/pdf/{id}` (multipart/form-data)
+- `pageCount` form-data orqali yuboriladi (avtomatik hisoblanadi).
 
 ## Skriptlar
 
-- `npm run dev` — development server.
-- `npm run build` — production build.
-- `npm run preview` — buildni local ko'rish.
-- `npm run lint` — lint tekshiruvi.
+- `npm run dev` — development server
+- `npm run build` — production build
+- `npm run preview` — buildni local ko'rish
+- `npm run lint` — lint tekshiruvi
 
+## Eslatma
+
+PDF worker versiyasi `react-pdf` bilan mos bo'lishi kerak.
+Bu loyiha `pdfjs-dist` workerini `?url` orqali ulaydi.
