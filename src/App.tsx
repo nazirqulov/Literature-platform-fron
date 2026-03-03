@@ -8,6 +8,9 @@ import LoginPage from './features/auth/LoginPage';
 import GuestDashboard from './features/dashboard/GuestDashboard';
 import UserDashboard from './features/dashboard/UserDashboard';
 import ProfilePage from './features/profile/ProfilePage';
+import FavoriteBooksPage from './features/profile/FavoriteBooksPage';
+import CompletedBooksPage from './features/profile/CompletedBooksPage';
+import ReadingBooksPage from './features/profile/ReadingBooksPage';
 import AdminLayout from './features/admin/AdminLayout';
 import AdminDashboardPage from './features/admin/AdminDashboardPage';
 import AdminBooksPage from './features/admin/AdminBooksPage';
@@ -65,6 +68,9 @@ const App: React.FC = () => {
             <Route path="/books" element={<BooksPage />} />
             <Route path="/books/:bookId/read" element={<BookReaderPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/favorites" element={<FavoriteBooksPage />} />
+            <Route path="/profile/completed" element={<CompletedBooksPage />} />
+            <Route path="/profile/reading" element={<ReadingBooksPage />} />
           </Route>
 
           <Route element={<AdminRoute />}>

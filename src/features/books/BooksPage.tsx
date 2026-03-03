@@ -249,7 +249,7 @@ const BooksPage: React.FC = () => {
               Kitoblar topilmadi.
             </div>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-3 lg:grid-cols-4">
               {filteredBooks.map((book) => {
                 const isFav =
                   (book.id != null
@@ -283,10 +283,10 @@ const BooksPage: React.FC = () => {
 
                   <div className="mt-4 space-y-2">
                     <h3 className="text-lg font-semibold text-[#2B2B2B]">
-                      {book.title ?? "--"}
+                      Kitob nomi: {book.title ?? "--"}
                     </h3>
                     <p className="text-sm text-[#6B6B6B]">
-                      {book.author?.name ?? "Muallif ko'rsatilmagan"}
+                      Muallifi: {book.author?.name ?? "Muallif ko'rsatilmagan"}
                     </p>
                     <div className="flex items-center gap-2 text-xs text-[#9A9A9A]">
                       <BookOpen size={14} />
@@ -363,4 +363,3 @@ const BooksPage: React.FC = () => {
 };
 
 export default BooksPage;
-
