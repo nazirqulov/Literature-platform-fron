@@ -3,7 +3,9 @@ import { useAuth } from '../../context/useAuth';
 import ProfileInfo from './ProfileInfo';
 import ProfileForm from './ProfileForm';
 import ProfileImageHandler from './ProfileImageHandler';
-import BookList from './BookList';
+import FavoriteBooksPreview from './FavoriteBooksPreview';
+import CompletedBooksPreview from './CompletedBooksPreview';
+import ReadingBooksPreview from './ReadingBooksPreview';
 import { Loader2, Settings, List } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
@@ -24,19 +26,6 @@ const ProfilePage: React.FC = () => {
     }
 
     const isSuperAdmin = user.role === 'SUPERADMIN' || user.role === 'ROLE_SUPERADMIN';
-
-    const mockData = {
-        read: [
-            { title: "O'tkan kunlar", author: "Abdulla Qodiriy" },
-            { title: "Yulduzli tunlar", author: "Pirimqul Qodirov" },
-        ],
-        reading: [
-            { title: "Kecha va Kunduz", author: "Cho'lpon" },
-        ],
-        favorites: [
-            { title: "Dunyoning ishlari", author: "O'tkir Hoshimov" },
-        ],
-    };
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-12 space-y-12 animate-fade-in">
@@ -76,9 +65,9 @@ const ProfilePage: React.FC = () => {
                         </div>
 
                         <div className="space-y-8">
-                            <BookList title="Hozir o'qilmoqda" books={mockData.reading} />
-                            <BookList title="O'qib bo'lingan" books={mockData.read} />
-                            <BookList title="Saralangan" books={mockData.favorites} />
+                            <ReadingBooksPreview />
+                            <CompletedBooksPreview />
+                            <FavoriteBooksPreview />
                         </div>
                     </div>
                 )}
