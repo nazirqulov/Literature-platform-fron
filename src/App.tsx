@@ -19,6 +19,8 @@ import AdminAuthorsPage from './features/admin/AdminAuthorsPage';
 import AdminCategoriesPage from './features/admin/AdminCategoriesPage';
 import BooksPage from './features/books/BooksPage';
 import BookReaderPage from './features/books/BookReaderPage';
+import BookDetailPage from './features/books/BookDetailPage';
+import BookAudioPage from './features/books/BookAudioPage';
 import ProtectedRoute from './shared/components/ProtectedRoute';
 import AdminRoute from './shared/components/AdminRoute';
 import { useAuth } from './context/useAuth';
@@ -66,7 +68,9 @@ const App: React.FC = () => {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<UserDashboard />} />
             <Route path="/books" element={<BooksPage />} />
+            <Route path="/books/:bookId" element={<BookDetailPage />} />
             <Route path="/books/:bookId/read" element={<BookReaderPage />} />
+            <Route path="/books/:bookId/audio" element={<BookAudioPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/favorites" element={<FavoriteBooksPage />} />
             <Route path="/profile/completed" element={<CompletedBooksPage />} />

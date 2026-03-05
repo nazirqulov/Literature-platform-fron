@@ -8,6 +8,8 @@ import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
+const MAX_AUDIO_SIZE = 100 * 1024 * 1024;
+
 const AdminBooksPage: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -44,12 +46,20 @@ const AdminBooksPage: React.FC = () => {
   const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
   const [newPdfFile, setNewPdfFile] = useState<File | null>(null);
   const [editPdfFile, setEditPdfFile] = useState<File | null>(null);
+  const [newAudioFile, setNewAudioFile] = useState<File | null>(null);
+  const [editAudioFile, setEditAudioFile] = useState<File | null>(null);
+  const [newAudioPreview, setNewAudioPreview] = useState<string | null>(null);
+  const [editAudioPreview, setEditAudioPreview] = useState<string | null>(null);
   const [newCoverProgress, setNewCoverProgress] = useState<number | null>(null);
   const [editCoverProgress, setEditCoverProgress] = useState<number | null>(null);
   const [newPdfProgress, setNewPdfProgress] = useState<number | null>(null);
   const [editPdfProgress, setEditPdfProgress] = useState<number | null>(null);
+  const [newAudioProgress, setNewAudioProgress] = useState<number | null>(null);
+  const [editAudioProgress, setEditAudioProgress] = useState<number | null>(null);
   const newCoverObjectUrlRef = useRef<string | null>(null);
   const editCoverObjectUrlRef = useRef<string | null>(null);
+  const newAudioObjectUrlRef = useRef<string | null>(null);
+  const editAudioObjectUrlRef = useRef<string | null>(null);
   const coverObjectUrlsRef = useRef<Map<number, string>>(new Map());
 
   const fetchCategories = useCallback(async () => {
@@ -130,6 +140,26 @@ const AdminBooksPage: React.FC = () => {
     setEditPdfFile(null);
   };
 
+  const clearNewAudioFile = () => {
+    if (newAudioObjectUrlRef.current) {
+      URL.revokeObjectURL(newAudioObjectUrlRef.current);
+      newAudioObjectUrlRef.current = null;
+    }
+    setNewAudioProgress(null);
+    setNewAudioPreview(null);
+    setNewAudioFile(null);
+  };
+
+  const clearEditAudioFile = () => {
+    if (editAudioObjectUrlRef.current) {
+      URL.revokeObjectURL(editAudioObjectUrlRef.current);
+      editAudioObjectUrlRef.current = null;
+    }
+    setEditAudioProgress(null);
+    setEditAudioPreview(null);
+    setEditAudioFile(null);
+  };
+
   const handleCoverSelect = (file: File, mode: "create" | "edit") => {
     if (!file.type.startsWith("image/")) {
       toast.error("Faqat rasm fayllarini yuklash mumkin.");
@@ -197,6 +227,23 @@ const AdminBooksPage: React.FC = () => {
     });
   };
 
+  const uploadAudioFile = async (
+    bookId: number,
+    file: File,
+    onProgress?: (progress: number) => void,
+  ) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    await api.post(`/api/books/file/audio/${bookId}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (event) => {
+        if (!event.total) return;
+        const progress = Math.round((event.loaded / event.total) * 100);
+        onProgress?.(progress);
+      },
+    });
+  };
+
   const handlePdfSelect = async (file: File, mode: "create" | "edit") => {
     const isPdf =
       file.type === "application/pdf" ||
@@ -243,6 +290,37 @@ const AdminBooksPage: React.FC = () => {
     } else {
       toast.error("PDF sahifa sonini aniqlab bo'lmadi.");
     }
+  };
+
+  const handleAudioSelect = (file: File, mode: "create" | "edit") => {
+    if (!file.type.startsWith("audio/")) {
+      toast.error("Faqat audio fayl yuklash mumkin.");
+      return;
+    }
+    if (file.size > MAX_AUDIO_SIZE) {
+      toast.error("Audio hajmi 100MB dan oshmasligi kerak.");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    if (mode === "create") {
+      setNewAudioProgress(null);
+      if (newAudioObjectUrlRef.current) {
+        URL.revokeObjectURL(newAudioObjectUrlRef.current);
+      }
+      newAudioObjectUrlRef.current = objectUrl;
+      setNewAudioFile(file);
+      setNewAudioPreview(objectUrl);
+      return;
+    }
+
+    setEditAudioProgress(null);
+    if (editAudioObjectUrlRef.current) {
+      URL.revokeObjectURL(editAudioObjectUrlRef.current);
+    }
+    editAudioObjectUrlRef.current = objectUrl;
+    setEditAudioFile(file);
+    setEditAudioPreview(objectUrl);
   };
 
   const setCoverFromFile = (bookId: number, file: File) => {
@@ -365,6 +443,14 @@ const AdminBooksPage: React.FC = () => {
         URL.revokeObjectURL(editCoverObjectUrlRef.current);
         editCoverObjectUrlRef.current = null;
       }
+      if (newAudioObjectUrlRef.current) {
+        URL.revokeObjectURL(newAudioObjectUrlRef.current);
+        newAudioObjectUrlRef.current = null;
+      }
+      if (editAudioObjectUrlRef.current) {
+        URL.revokeObjectURL(editAudioObjectUrlRef.current);
+        editAudioObjectUrlRef.current = null;
+      }
       coverObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
       coverObjectUrlsRef.current.clear();
     };
@@ -434,6 +520,7 @@ const AdminBooksPage: React.FC = () => {
     });
     clearNewCoverPreview();
     clearNewPdfFile();
+    clearNewAudioFile();
   };
 
   const openEditModal = (book: BookResponse) => {
@@ -462,12 +549,14 @@ const AdminBooksPage: React.FC = () => {
       setEditCoverPreview(existingCover);
     }
     clearEditPdfFile();
+    clearEditAudioFile();
   };
 
   const closeEditModal = () => {
     setEditingBook(null);
     clearEditCoverPreview();
     clearEditPdfFile();
+    clearEditAudioFile();
   };
 
   const toggleEditSubCategoryId = (id: number) => {
@@ -577,6 +666,25 @@ const AdminBooksPage: React.FC = () => {
             ),
           );
           setEditPdfProgress(null);
+        }
+      }
+      if (editAudioFile) {
+        try {
+          setEditAudioProgress(0);
+          await uploadAudioFile(
+            editingBook.id,
+            editAudioFile,
+            setEditAudioProgress,
+          );
+          setEditAudioProgress(100);
+        } catch (uploadError) {
+          toast.error(
+            getErrorMessage(
+              uploadError,
+              "Audio faylni yuklashda xatolik yuz berdi.",
+            ),
+          );
+          setEditAudioProgress(null);
         }
       }
       toast.success("Kitob ma'lumotlari yangilandi.");
@@ -722,6 +830,21 @@ const AdminBooksPage: React.FC = () => {
             ),
           );
           setNewPdfProgress(null);
+        }
+      }
+      if (newAudioFile && data?.id) {
+        try {
+          setNewAudioProgress(0);
+          await uploadAudioFile(data.id, newAudioFile, setNewAudioProgress);
+          setNewAudioProgress(100);
+        } catch (uploadError) {
+          toast.error(
+            getErrorMessage(
+              uploadError,
+              "Audio faylni yuklashda xatolik yuz berdi.",
+            ),
+          );
+          setNewAudioProgress(null);
         }
       }
       toast.success("Kitob muvaffaqiyatli qo'shildi.");
@@ -1175,6 +1298,50 @@ const AdminBooksPage: React.FC = () => {
                 {renderUploadProgress(newPdfProgress)}
               </div>
 
+              <div className="space-y-2 lg:col-span-2">
+                <label className="text-xs font-medium text-[#6B6B6B]">
+                  Audio fayl (ixtiyoriy)
+                </label>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                  <div className="rounded-lg border border-[#E3DBCF] bg-white px-4 py-2 text-sm text-[#6B6B6B]">
+                    {newAudioFile ? newAudioFile.name : "Audio tanlanmagan"}
+                  </div>
+                  <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-[#E3DBCF] bg-white px-4 py-2 text-sm text-[#6B6B6B] transition hover:bg-[#EFE7DB]/60">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) handleAudioSelect(file, "create");
+                      }}
+                    />
+                    Audio tanlash
+                  </label>
+                  {newAudioFile && (
+                    <button
+                      type="button"
+                      onClick={clearNewAudioFile}
+                      className="text-xs font-semibold text-[#6B6B6B] hover:text-[#2B2B2B]"
+                    >
+                      Bekor qilish
+                    </button>
+                  )}
+                </div>
+                {newAudioPreview ? (
+                  <audio
+                    className="mt-2 w-full"
+                    controls
+                    preload="metadata"
+                    src={newAudioPreview}
+                  />
+                ) : null}
+                <p className="text-xs text-[#9A9A9A]">
+                  MP3/WAV/OGG, 100MB gacha.
+                </p>
+                {renderUploadProgress(newAudioProgress)}
+              </div>
+
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-[#6B6B6B]">
                     Muallif
@@ -1528,6 +1695,50 @@ const AdminBooksPage: React.FC = () => {
                     Faqat PDF, 50MB gacha.
                   </p>
                   {renderUploadProgress(editPdfProgress)}
+                </div>
+
+                <div className="space-y-2 lg:col-span-2">
+                  <label className="text-xs font-medium text-[#6B6B6B]">
+                    Audio fayl (ixtiyoriy)
+                  </label>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="rounded-lg border border-[#E3DBCF] bg-white px-4 py-2 text-sm text-[#6B6B6B]">
+                      {editAudioFile ? editAudioFile.name : "Audio tanlanmagan"}
+                    </div>
+                    <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-[#E3DBCF] bg-white px-4 py-2 text-sm text-[#6B6B6B] transition hover:bg-[#EFE7DB]/60">
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) handleAudioSelect(file, "edit");
+                        }}
+                      />
+                      Audio tanlash
+                    </label>
+                    {editAudioFile && (
+                      <button
+                        type="button"
+                        onClick={clearEditAudioFile}
+                        className="text-xs font-semibold text-[#6B6B6B] hover:text-[#2B2B2B]"
+                      >
+                        Bekor qilish
+                      </button>
+                    )}
+                  </div>
+                  {editAudioPreview ? (
+                    <audio
+                      className="mt-2 w-full"
+                      controls
+                      preload="metadata"
+                      src={editAudioPreview}
+                    />
+                  ) : null}
+                  <p className="text-xs text-[#9A9A9A]">
+                    MP3/WAV/OGG, 100MB gacha.
+                  </p>
+                  {renderUploadProgress(editAudioProgress)}
                 </div>
 
                 <div className="space-y-2">

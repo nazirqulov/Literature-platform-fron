@@ -7,7 +7,13 @@ type PagedResponse<T> = {
   content?: T[];
 };
 
-const ReadingBooksPreview: React.FC = () => {
+type ReadingBooksPreviewProps = {
+  showHeader?: boolean;
+};
+
+const ReadingBooksPreview: React.FC<ReadingBooksPreviewProps> = ({
+  showHeader = true,
+}) => {
   const navigate = useNavigate();
   const [books, setBooks] = useState<FavoriteBook[]>([]);
   const [coversById, setCoversById] = useState<
@@ -97,18 +103,20 @@ const ReadingBooksPreview: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between border-b border-[#E3DBCF] pb-2">
-        <h3 className="text-lg font-bold text-[#2B2B2B] uppercase tracking-wider">
-          Hozir o'qilmoqda
-        </h3>
-        <button
-          type="button"
-          onClick={() => navigate("/profile/reading")}
-          className="text-xs font-semibold text-[#6B4F3A] transition hover:text-[#5A4030]"
-        >
-          Barchasini ko'rish
-        </button>
-      </div>
+      {showHeader && (
+        <div className="flex items-center justify-between border-b border-[#E3DBCF] pb-2">
+          <h3 className="text-lg font-bold text-[#2B2B2B] uppercase tracking-wider">
+            Hozir o'qilmoqda
+          </h3>
+          <button
+            type="button"
+            onClick={() => navigate("/profile/reading")}
+            className="text-xs font-semibold text-[#6B4F3A] transition hover:text-[#5A4030]"
+          >
+            Barchasini ko'rish
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-sm text-[#6B6B6B]">Yuklanmoqda...</div>
