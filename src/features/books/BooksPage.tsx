@@ -152,9 +152,9 @@ const BooksPage: React.FC = () => {
     };
   }, []);
 
-  const openReader = (bookId: number) => {
-    if (Number.isNaN(bookId)) return;
-    navigate(`/books/${bookId}/read`);
+  const openDetails = (book: BookResponse) => {
+    if (!book.id || Number.isNaN(book.id)) return;
+    navigate(`/books/${book.id}`, { state: { book } });
   };
 
   const toggleFavorite = async (bookId: number) => {
@@ -316,7 +316,7 @@ const BooksPage: React.FC = () => {
                     {book.id && (
                       <div className="flex items-center gap-3 pt-2">
                         <button
-                          onClick={() => openReader(book.id as number)}
+                          onClick={() => openDetails(book)}
                           className="inline-flex items-center gap-2 rounded-lg border border-[#E3DBCF] bg-white px-3 py-1.5 text-xs font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-70"
                         >
                           Kitobni ochish
