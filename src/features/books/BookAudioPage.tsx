@@ -461,14 +461,14 @@ const BookAudioPage: React.FC = () => {
               <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#F5F1E8] via-white to-[#EFE7DB] text-[#9A9A9A]">
                 <BookOpen size={34} />
                 <span className="text-xs font-semibold uppercase tracking-widest">
-                  Muqova yo'q
+                  Muqova mavjud emas
                 </span>
               </div>
             )}
           </div>
           <div className="space-y-1 text-sm text-[#6B6B6B]">
             <p className="text-base font-semibold text-[#2B2B2B]">
-              {book?.title ?? "Noma'lum kitob"}
+              {book?.title ?? "Kitob nomi ko'rsatilmagan"}
             </p>
             <p>
               Muallif:{" "}

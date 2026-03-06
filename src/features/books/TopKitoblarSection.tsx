@@ -204,7 +204,7 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
                     </div>
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#9A9A9A]">
-                      Muqova yo'q
+                      Muqova mavjud emas
                     </div>
                   )}
 
@@ -214,12 +214,16 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between px-4 pb-3 pt-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-semibold text-[#2B2B2B]">
-                      {item.title ?? "Noma'lum kitob"}
+                  <div className="min-w-0 space-y-1">
+                    <p className="truncate text-sm text-[#6B6B6B]">
+                      <span className="text-[#9A9A9A] font-semibold">Kitob:</span>{" "}
+                      <span className="text-[#2B2B2B] font-semibold">
+                        {item.title ?? "Kitob nomi ko'rsatilmagan"}
+                      </span>
                     </p>
                     <p className="truncate text-sm text-[#6B6B6B]">
-                      {item.author?.name ?? "Muallif noma'lum"}
+                      <span className="text-[#9A9A9A] font-semibold">Muallif:</span>{" "}
+                      <span>{item.author?.name ?? "Muallif ko'rsatilmagan"}</span>
                     </p>
                   </div>
                   {ratingValue != null ? (

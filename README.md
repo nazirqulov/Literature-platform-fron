@@ -1,34 +1,40 @@
 # Literature Platform Frontend
 
 O'zbek adabiyotini raqamlashtirishga qaratilgan platformaning frontend qismi.
-Foydalanuvchilarga kitoblarni o'qish, progressni saqlash, sevimlilarga qo'shish
-va reyting qoldirish imkonini beradi. Admin panel orqali kontent boshqariladi.
+Foydalanuvchilar kitoblarni o'qish, audio tinglash, progressni saqlash,
+sevimlilarga qo'shish va reyting qoldirish imkoniga ega. Admin panel orqali
+kontent boshqariladi.
 
 ## Asosiy imkoniyatlar
 
-- Landing (guest) sahifa, mualliflar va saralangan kitoblar bloklari.
+- Guest sahifa va umumiy tanishtiruv bloklari.
 - Autentifikatsiya: ro'yxatdan o'tish, login, email tasdiqlash.
-- Profil va profil rasmi boshqaruvi.
-- PDF reader:
-  - Progress GET/PUT (sahifa, bob).
-  - O'qish sessiyasi start/end.
-  - Sevimliga qo'shish (toggle).
-  - Reyting va fikr qoldirish.
-  - Zoom, sahifa o'zgartirish, loading va error holatlari.
+- Profil boshqaruvi va profil rasmi yangilash.
+- Dashboard:
+- O'qilgan kitoblar soni.
+- Mutolaa vaqti (oxirgi 7 kun va bugun).
+- "Siz uchun" tavsiyalar (top reyting).
+- "Eng ko'p o'qilganlar" (top 100 ko'rish).
+- Kitoblar:
+- Kitoblar ro'yxati va qidiruv.
+- Kitob detail sahifasi (tavsif, meta, reyting va review).
+- PDF reader (zoom, sahifa boshqaruvi).
+- Audio player (orqaga/oldinga, pauza, tezlik).
+- Progress saqlash va tiklash (PDF + audio).
 - Admin panel (SUPERADMIN):
-  - Kitoblar CRUD, muqova va PDF upload.
-  - PDF yuklanganda sahifa sonini avtomatik aniqlash.
-  - Mualliflar, kategoriyalar, foydalanuvchilar boshqaruvi.
-- Mobil + noutbuk uchun responsiv dizayn.
+- Kitoblar CRUD.
+- Muqova, PDF va audio upload.
+- PDF sahifa sonini avtomatik aniqlash.
+- Mualliflar, kategoriyalar, foydalanuvchilar boshqaruvi.
+- Light/Dark mode va responsiv dizayn.
 
 ## Texnologiyalar
 
-- React 19 + TypeScript
+- React + TypeScript
 - Vite
 - Tailwind CSS
 - Axios
 - React Router
-- React Hook Form + Yup
 - React Toastify
 - React PDF (pdf.js)
 
@@ -53,38 +59,51 @@ Backend manzili o'zgarsa shu yerda yangilang.
 
 ## Muhim routelar
 
-- `/books` — kitoblar ro'yxati
-- `/books/:bookId/read` — PDF reader
-- `/profile` — foydalanuvchi profili
-- `/admin/*` — admin panel
+- `/dashboard` - user dashboard
+- `/books` - kitoblar ro'yxati
+- `/books/:bookId` - kitob detail
+- `/books/:bookId/read` - PDF reader
+- `/books/:bookId/audio` - audio player
+- `/books/siz-uchun` - tavsiyalar (top reyting)
+- `/books/top-kitoblar` - eng ko'p o'qilganlar
+- `/profile` - foydalanuvchi profili
+- `/admin/*` - admin panel
 
-## PDF Reader qisqacha
-
-Reader sahifasi:
+## PDF reader API
 
 - GET `/api/books/{bookId}/progress`
-- PUT `/api/books/{bookId}/progress` (debounce bilan)
+- PUT `/api/books/{bookId}/progress`
 - POST `/api/books/{bookId}/start`
 - POST `/api/books/sessions/start`
 - POST `/api/books/sessions/end` yoki `/api/books/sessions/end-active`
 - POST `/api/books/{bookId}/favorite`
 - POST `/api/books/{bookId}/rating`
 
-## Admin PDF upload
+## Audio API
 
-Admin panelda PDF yuklash:
+- GET `/api/books/{bookId}/audio`
+- GET `/api/me/books/{bookId}/audio`
+- POST `/api/me/books/{bookId}/audio/save?duration=SECONDS`
 
-- `/api/books/file/pdf/{id}` (multipart/form-data)
-- `pageCount` form-data orqali yuboriladi (avtomatik hisoblanadi).
+## Admin upload API
+
+- POST `/api/books/{id}/cover`
+- POST `/api/books/file/pdf/{id}` (multipart/form-data, `pageCount` bilan)
+- POST `/api/books/file/audio/{id}`
+
+## Tavsiyalar va top kitoblar
+
+- GET `/api/me/books/siz-uchun` (top reyting)
+- GET `/api/me/books/top-kitoblar` (top 100 ko'rish)
 
 ## Skriptlar
 
-- `npm run dev` — development server
-- `npm run build` — production build
-- `npm run preview` — buildni local ko'rish
-- `npm run lint` — lint tekshiruvi
+- `npm run dev` - development server
+- `npm run build` - production build
+- `npm run preview` - buildni local ko'rish
+- `npm run lint` - lint tekshiruvi
 
 ## Eslatma
 
-PDF worker versiyasi `react-pdf` bilan mos bo'lishi kerak.
-Bu loyiha `pdfjs-dist` workerini `?url` orqali ulaydi.
+PDF worker `react-pdf` bilan mos bo'lishi kerak.
+Loyiha `pdfjs-dist` workerini `?url` orqali ulaydi.

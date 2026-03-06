@@ -85,7 +85,7 @@ const FavoriteBookCard: React.FC<FavoriteBookCardProps> = ({
   const progressValue = useMemo(() => resolveProgress(book), [book]);
   const ratingValue = useMemo(() => resolveRatingValue(book), [book]);
   const ratingCount = useMemo(() => resolveRatingCount(book), [book]);
-  const title = book.bookTitle ?? "Noma'lum kitob";
+  const title = book.bookTitle ?? "Kitob nomi ko'rsatilmagan";
   const author = book.bookAuthors ?? "Noma'lum muallif";
   const isClickable = typeof onCardClick === "function";
   const canOpen = typeof onOpen === "function";
