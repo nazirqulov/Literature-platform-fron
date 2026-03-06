@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import api from '../../services/api';
 import { BookOpen, Clock, Award, ChevronRight } from 'lucide-react';
+import SizUchunSection from '../books/SizUchunSection';
+import TopKitoblarSection from '../books/TopKitoblarSection';
 
 const parseReadingTimeMinutes = (data: unknown): number => {
     if (typeof data === 'number' && Number.isFinite(data)) {
@@ -272,6 +274,9 @@ const UserDashboard: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            <SizUchunSection limit={6} layout="carousel" showHeader showAllLink />
+            <TopKitoblarSection limit={10} layout="carousel" showHeader showAllLink />
 
             <div className="grid lg:grid-cols-3 gap-10">
                 {/* Main Content */}
