@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import api from '../../services/api';
-import { BookOpen, Clock, Award, ChevronRight } from 'lucide-react';
+import { BookOpen, Clock, Award } from 'lucide-react';
 import SizUchunSection from '../books/SizUchunSection';
 import TopKitoblarSection from '../books/TopKitoblarSection';
 import NewBooksSection from '../books/NewBooksSection';
+import AuthorsSection from '../authors/AuthorsSection';
 
 const parseReadingTimeMinutes = (data: unknown): number => {
     if (typeof data === 'number' && Number.isFinite(data)) {
@@ -279,6 +280,7 @@ const UserDashboard: React.FC = () => {
             <NewBooksSection limit={6} layout="carousel" showHeader showAllLink={false} />
             <SizUchunSection limit={6} layout="carousel" showHeader showAllLink />
             <TopKitoblarSection limit={10} layout="carousel" showHeader showAllLink />
+            <AuthorsSection limit={8} layout="carousel" showHeader showAllLink />
 
             {/* Pastki bloklar vaqtincha olib tashlandi */}
         </div>

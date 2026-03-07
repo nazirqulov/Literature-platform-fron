@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, BookOpen, Headphones, Star } from "lucide-react";
 import { toast } from "react-toastify";
@@ -153,7 +153,7 @@ const BookDetailPage: React.FC = () => {
             setLoading(false);
             return;
           }
-        } catch (fetchError) {
+        } catch {
           if (cancelled) return;
           if (i < endpoints.length - 1) continue;
           setError("Kitob ma'lumotlarini yuklashda xatolik yuz berdi.");
@@ -217,10 +217,6 @@ const BookDetailPage: React.FC = () => {
 
   const ratingAverage = resolveRatingValue(book);
   const ratingCount = resolveRatingCount(book);
-
-  const tags = useMemo(() => {
-    return book?.categories?.map((item) => item.name).filter(Boolean) ?? [];
-  }, [book]);
 
   const submitRating = useCallback(async () => {
     if (!bookIdNumber || ratingLoading || ratingValue <= 0) return;
@@ -333,23 +329,6 @@ const BookDetailPage: React.FC = () => {
                 {book?.author?.name ?? "Muallif ko'rsatilmagan"}
               </span>
             </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {tags.length > 0 ? (
-              tags.map((tag, index) => (
-                <span
-                  key={`${tag}-${index}`}
-                  className="rounded-full border border-[#E3DBCF] bg-[#F5F1E8] px-3 py-1 text-xs font-semibold text-[#6B6B6B]"
-                >
-                  {tag}
-                </span>
-              ))
-            ) : (
-              <span className="text-xs text-[#9A9A9A]">
-                Kategoriya ko'rsatilmagan
-              </span>
-            )}
           </div>
 
           <div className="glass rounded-2xl border border-[#E3DBCF] p-4">

@@ -494,6 +494,14 @@ interface AuthorRequest {
   nationality?: string;
 }
 
+interface AuthorFormState {
+  name: string;
+  biography: string;
+  birthDate: string;
+  deathDate: string;
+  nationality: string;
+}
+
 interface AuthorResponse extends AuthorRequest {
   id: number;
 }
