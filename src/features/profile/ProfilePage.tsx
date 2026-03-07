@@ -111,7 +111,7 @@ const ProfilePage: React.FC = () => {
                                 return (
                                     <div
                                         key={section.id}
-                                        className="overflow-hidden rounded-3xl border border-[#E3DBCF] bg-white/90 shadow-[0_12px_30px_rgba(107,79,58,0.08)]"
+                                        className="glass overflow-hidden rounded-3xl shadow-[0_12px_30px_rgba(107,79,58,0.08)]"
                                     >
                                         <div
                                             role="button"
@@ -120,22 +120,22 @@ const ProfilePage: React.FC = () => {
                                             aria-controls={`accordion-${section.id}`}
                                             onClick={() => handleToggle(section.id)}
                                             onKeyDown={(event) => handleHeaderKeyDown(event, section.id)}
-                                            className="group flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition hover:bg-[#F9F6F0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6B4F3A]/30"
+                                            className="group flex w-full flex-col gap-4 px-6 py-5 text-left transition hover:bg-[#F5F1E8]/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6B4F3A]/30 sm:flex-row sm:items-center sm:justify-between"
                                         >
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex min-w-0 items-center gap-4">
                                                 <span
                                                     className={`flex h-11 w-11 items-center justify-center rounded-2xl border text-[#6B4F3A] transition ${isOpen ? 'border-[#6B4F3A]/30 bg-[#6B4F3A]/10' : 'border-[#E3DBCF] bg-[#F5F1E8]'}`}
                                                 >
                                                     <Icon size={20} />
                                                 </span>
-                                                <div>
+                                                <div className="min-w-0">
                                                     <div className="text-lg font-bold text-[#2B2B2B] uppercase tracking-wide">
                                                         {section.title}
                                                     </div>
                                                     <div className="text-xs text-[#6B6B6B]">{section.subtitle}</div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap sm:justify-end">
                                                 <button
                                                     type="button"
                                                     onClick={(event) => {

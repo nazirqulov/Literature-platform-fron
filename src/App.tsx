@@ -23,6 +23,8 @@ import BookDetailPage from './features/books/BookDetailPage';
 import BookAudioPage from './features/books/BookAudioPage';
 import SizUchunPage from './features/books/SizUchunPage';
 import TopKitoblarPage from './features/books/TopKitoblarPage';
+import AuthorsPage from './features/authors/AuthorsPage';
+import AuthorDetailPage from './features/authors/AuthorDetailPage';
 import ProtectedRoute from './shared/components/ProtectedRoute';
 import AdminRoute from './shared/components/AdminRoute';
 import { useAuth } from './context/useAuth';
@@ -75,6 +77,8 @@ const App: React.FC = () => {
             <Route path="/books/:bookId/audio" element={<BookAudioPage />} />
             <Route path="/books/siz-uchun" element={<SizUchunPage />} />
             <Route path="/books/top-kitoblar" element={<TopKitoblarPage />} />
+            <Route path="/authors" element={<AuthorsPage />} />
+            <Route path="/authors/:authorId" element={<AuthorDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/favorites" element={<FavoriteBooksPage />} />
             <Route path="/profile/completed" element={<CompletedBooksPage />} />

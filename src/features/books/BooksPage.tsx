@@ -307,7 +307,7 @@ const BooksPage: React.FC = () => {
                       <span>
                         {resolveRatingValue(book) != null
                           ? `${resolveRatingValue(book)?.toFixed(1)}`
-                          : "Reyting yo'q"}
+                          : "Reyting mavjud emas"}
                         {resolveRatingCount(book) != null
                           ? ` (${resolveRatingCount(book)})`
                           : ""}

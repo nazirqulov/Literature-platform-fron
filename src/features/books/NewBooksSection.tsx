@@ -1,23 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, Star } from "lucide-react";
+import { BookOpen, Sparkles, Star } from "lucide-react";
 import api from "../../services/api";
 
-interface BookProgressResponse {
-  bookId?: number;
-  bookTitle?: string;
-  bookAuthors?: string;
-  bookCover?: string;
-  category?: string;
-  subCategory?: string;
-  status?: string;
-  currentPage?: number;
-  totalPages?: number;
-  currentChapter?: number;
-  progressPercentage?: number;
-  isFavorite?: boolean;
-  userRating?: number;
-  userReview?: string;
+interface BookResponse {
+  id?: number;
+  title?: string;
+  author?: { id?: number; name?: string } | null;
+  coverImage?: string | null;
+  averageRating?: number | null;
+  ratingCount?: number | null;
+  createdAt?: string | null;
 }
 
 const resolveCoverUrl = (value?: string | null) => {
@@ -27,21 +20,21 @@ const resolveCoverUrl = (value?: string | null) => {
   return new URL(value.replace(/^\/+/, ""), `${baseUrl}/`).toString();
 };
 
-type SizUchunSectionProps = {
+type NewBooksSectionProps = {
   limit?: number;
   layout?: "carousel" | "grid";
   showHeader?: boolean;
   showAllLink?: boolean;
 };
 
-const SizUchunSection: React.FC<SizUchunSectionProps> = ({
+const NewBooksSection: React.FC<NewBooksSectionProps> = ({
   limit,
   layout = "carousel",
   showHeader = true,
-  showAllLink = true,
+  showAllLink = false,
 }) => {
   const navigate = useNavigate();
-  const [items, setItems] = useState<BookProgressResponse[]>([]);
+  const [items, setItems] = useState<BookResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [coversById, setCoversById] = useState<
@@ -55,14 +48,14 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
     setError(null);
 
     api
-      .get<BookProgressResponse[]>("/api/me/books/siz-uchun")
+      .get<BookResponse[]>("/api/books/new-books")
       .then(({ data }) => {
         if (cancelled) return;
         setItems(Array.isArray(data) ? data : []);
       })
       .catch(() => {
         if (!cancelled) {
-          setError("Siz uchun bo'limini yuklashda xatolik yuz berdi.");
+          setError("Yangi kitoblarni yuklashda xatolik yuz berdi.");
         }
       })
       .finally(() => {
@@ -73,6 +66,10 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
       cancelled = true;
     };
   }, []);
+
+  const visibleItems = useMemo(() => {
+    return typeof limit === "number" ? items.slice(0, limit) : items;
+  }, [items, limit]);
 
   const fetchCoverForBook = useCallback(async (bookId: number) => {
     if (Number.isNaN(bookId)) return;
@@ -103,9 +100,7 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
   }, []);
 
   useEffect(() => {
-    const ids = items
-      .map((item) => item.bookId)
-      .filter((id): id is number => typeof id === "number");
+    const ids = items.map((item) => item.id).filter((id): id is number => !!id);
     const idSet = new Set(ids);
 
     coverObjectUrlsRef.current.forEach((url, id) => {
@@ -135,10 +130,6 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
     };
   }, []);
 
-  const visibleItems = useMemo(() => {
-    return typeof limit === "number" ? items.slice(0, limit) : items;
-  }, [items, limit]);
-
   const listClassName =
     layout === "grid"
       ? "grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
@@ -148,10 +139,15 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
     <div className="space-y-4">
       {showHeader ? (
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-[#2B2B2B]">Siz uchun</h2>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-[#6B4F3A]/10 text-[#6B4F3A]">
+              <Sparkles size={16} />
+            </span>
+            <h2 className="text-xl font-bold text-[#2B2B2B]">Yangi kitoblar</h2>
+          </div>
           {showAllLink ? (
             <Link
-              to="/books/siz-uchun"
+              to="/books"
               className="text-sm font-semibold text-[#6B4F3A] hover:text-[#5A4030]"
             >
               Barchasi
@@ -170,29 +166,29 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
         </div>
       ) : visibleItems.length === 0 ? (
         <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
-          Hozircha tavsiya yo'q.
+          Hozircha yangi kitob yo'q.
         </div>
       ) : (
         <div className={listClassName}>
           {visibleItems.map((item, index) => {
             const coverFromApi =
-              typeof item.bookId === "number" ? coversById[item.bookId] : undefined;
-            const fallbackCover = resolveCoverUrl(item.bookCover ?? null);
+              typeof item.id === "number" ? coversById[item.id] : undefined;
+            const fallbackCover = resolveCoverUrl(item.coverImage ?? null);
             const coverUrl = coverFromApi ?? fallbackCover;
             const isCoverLoading =
-              typeof item.bookId === "number" &&
-              coversById[item.bookId] === undefined &&
+              typeof item.id === "number" &&
+              coversById[item.id] === undefined &&
               !fallbackCover;
-            const ratingLabel =
-              typeof item.userRating === "number"
-                ? item.userRating.toFixed(1)
+            const ratingValue =
+              typeof item.averageRating === "number"
+                ? Math.max(0, Math.min(5, item.averageRating))
                 : null;
             return (
               <button
-                key={`${item.bookId ?? "book"}-${index}`}
+                key={`${item.id ?? "book"}-${index}`}
                 type="button"
                 onClick={() =>
-                  item.bookId ? navigate(`/books/${item.bookId}`) : undefined
+                  item.id ? navigate(`/books/${item.id}`) : undefined
                 }
                 className={`group relative overflow-hidden rounded-3xl border border-[#E3DBCF] bg-white text-left shadow-sm transition hover:border-[#6B4F3A]/40 hover:shadow-md ${
                   layout === "grid" ? "w-full" : "w-60 shrink-0"
@@ -202,7 +198,7 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
                   {coverUrl ? (
                     <img
                       src={coverUrl}
-                      alt={item.bookTitle ?? "Kitob"}
+                      alt={item.title ?? "Kitob"}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : isCoverLoading ? (
@@ -219,10 +215,10 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
                     <BookOpen size={16} />
                   </div>
 
-                  {ratingLabel ? (
+                  {ratingValue != null ? (
                     <div className="absolute right-3 top-3 flex items-center gap-1 rounded-2xl bg-white/95 px-2 py-1 text-xs font-semibold text-[#2B2B2B] shadow">
                       <Star size={14} className="fill-[#C97B63] text-[#C97B63]" />
-                      {ratingLabel}
+                      {ratingValue.toFixed(1)}
                     </div>
                   ) : null}
                 </div>
@@ -231,12 +227,12 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
                   <p className="truncate text-sm text-[#6B6B6B]">
                     <span className="text-[#9A9A9A] font-semibold">Kitob:</span>{" "}
                     <span className="text-[#2B2B2B] font-semibold">
-                      {item.bookTitle ?? "Kitob nomi ko'rsatilmagan"}
+                      {item.title ?? "Kitob nomi ko'rsatilmagan"}
                     </span>
                   </p>
                   <p className="truncate text-sm text-[#6B6B6B]">
                     <span className="text-[#9A9A9A] font-semibold">Muallif:</span>{" "}
-                    <span>{item.bookAuthors ?? "Muallif ko'rsatilmagan"}</span>
+                    <span>{item.author?.name ?? "Muallif ko'rsatilmagan"}</span>
                   </p>
                 </div>
               </button>
@@ -248,4 +244,4 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
   );
 };
 
-export default SizUchunSection;
+export default NewBooksSection;
