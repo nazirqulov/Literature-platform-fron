@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BookOpen, Users, UserPen, User, Tags, X } from "lucide-react";
+import { BookOpen, Users, UserPen, User, Tags, X, MessageSquareMore } from "lucide-react";
 import { useAuth } from "../context/useAuth";
 import { isSuperAdminRole } from "./utils/roleUtils";
 
@@ -55,6 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
     { to: "/admin/profile", label: "Profil", icon: <User size={20} /> },
     { to: "/admin/categories", label: "Categoryni boshqarish", icon: <Tags size={20} /> },
     { to: "/admin/authors", label: "Autorlar", icon: <UserPen size={20} /> },
+    { to: "/admin/chat", label: "Chat", icon: <MessageSquareMore size={20} /> },
   ];
 
   return (
