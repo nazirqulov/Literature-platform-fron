@@ -1,13 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Loader2, Lock, User } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import * as yup from "yup";
 import { useAuth } from "../../context/useAuth";
+import {
+  getRecaptchaToken,
+  initializeRecaptcha,
+  isRecaptchaConfigured,
+} from "../../services/recaptcha";
 import { isSuperAdminRole } from "../../shared/utils/roleUtils";
+import type { LoginRequest } from "../../types";
 
 const schema = yup.object().shape({
   usernameOrEmail: yup
@@ -16,23 +22,116 @@ const schema = yup.object().shape({
   password: yup.string().required("Parol kiritilishi shart"),
 });
 
+type LoginFormData = {
+  usernameOrEmail: string;
+  password: string;
+};
+
+const resolveLoginErrorMessage = (error: any): string => {
+  const status = error?.response?.status as number | undefined;
+  const data = error?.response?.data;
+  const rawMessage =
+    typeof data === "string"
+      ? data
+      : typeof data?.message === "string"
+        ? data.message
+        : "";
+  const message = rawMessage.trim();
+  const lower = message.toLowerCase();
+  const looksTechnical =
+    lower.includes("exception") ||
+    lower.includes("stack") ||
+    lower.includes("java.") ||
+    lower.includes("no value present") ||
+    lower.includes("ichki server xatosi");
+
+  if (status === 401 || status === 400) {
+    return "Login yoki parol noto'g'ri";
+  }
+
+  if (status === 403) {
+    if (lower.includes("bot")) {
+      return "Xavfsizlik tekshiruvi muvaffaqiyatsiz. Qayta urinib ko'ring.";
+    }
+    return "Kirishga ruxsat berilmadi.";
+  }
+
+  if (status === 429) {
+    return "Juda ko'p urinish bo'ldi. Birozdan keyin qayta urinib ko'ring.";
+  }
+
+  if ((typeof status === "number" && status >= 500) || looksTechnical) {
+    return "Serverda vaqtinchalik xatolik. Iltimos keyinroq urinib ko'ring.";
+  }
+
+  if (message.length > 0) {
+    return message;
+  }
+
+  return "Login yoki parol noto'g'ri";
+};
+
 const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecaptchaReady, setIsRecaptchaReady] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm({
+  } = useForm<LoginFormData>({
     resolver: yupResolver(schema),
   });
 
-  const onSubmit = async (data: any) => {
+  useEffect(() => {
+    if (!isRecaptchaConfigured()) return;
+    let cancelled = false;
+
+    const prepareRecaptcha = async () => {
+      try {
+        await initializeRecaptcha();
+        if (!cancelled) {
+          setIsRecaptchaReady(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setIsRecaptchaReady(false);
+        }
+      }
+    };
+
+    void prepareRecaptcha();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.add("recaptcha-login-page");
+    return () => {
+      document.body.classList.remove("recaptcha-login-page");
+    };
+  }, []);
+
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      const loggedInUser = await login(data);
+      if (!isRecaptchaConfigured()) {
+        throw new Error("reCAPTCHA sozlanmagan. `VITE_RECAPTCHA_SITE_KEY` ni tekshiring.");
+      }
+
+      const token = await getRecaptchaToken("login");
+      const payload: LoginRequest = {
+        usernameOrEmail: data.usernameOrEmail,
+        password: data.password,
+        recaptchaToken: token,
+        recaptchToken: token,
+      };
+
+      const loggedInUser = await login(payload);
       toast.success("Xush kelibsiz!");
       const role = loggedInUser.role;
       if (isSuperAdminRole(role)) {
@@ -41,9 +140,7 @@ const LoginPage: React.FC = () => {
         navigate("/dashboard", { replace: true });
       }
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Login yoki parol noto'g'ri",
-      );
+      toast.error(resolveLoginErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +220,7 @@ const LoginPage: React.FC = () => {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || (isRecaptchaConfigured() && !isRecaptchaReady)}
           className="btn-primary w-full flex items-center justify-center gap-2"
         >
           {isLoading ? (
@@ -132,6 +229,11 @@ const LoginPage: React.FC = () => {
             "Kirish"
           )}
         </button>
+        {isRecaptchaConfigured() && !isRecaptchaReady ? (
+          <p className="text-xs text-[#9A9A9A]">
+            Xavfsizlik tekshiruvi yuklanmoqda...
+          </p>
+        ) : null}
       </form>
 
       <div className="text-center mt-4">
