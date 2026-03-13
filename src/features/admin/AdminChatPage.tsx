@@ -230,6 +230,8 @@ const AdminChatPage: React.FC = () => {
           },
         });
 
+        if (cancelled) return;
+
         unsubscribe = client.subscribe(ADMIN_MESSAGES_DESTINATION, (payload, meta) => {
           console.log("Message arrived", meta.rawBody);
           console.log("[CHAT][ADMIN] Message meta:", {
@@ -258,6 +260,7 @@ const AdminChatPage: React.FC = () => {
             console.log("[CHAT][ADMIN] Auto-selected conversation user:", otherUserId);
           }
         });
+        console.log("[CHAT][ADMIN] Subscribed:", ADMIN_MESSAGES_DESTINATION);
       } catch (error) {
         if (!cancelled) {
           setIsConnected(false);
@@ -273,6 +276,7 @@ const AdminChatPage: React.FC = () => {
     return () => {
       cancelled = true;
       unsubscribe?.();
+      console.log("[CHAT][ADMIN] Unsubscribed:", ADMIN_MESSAGES_DESTINATION);
       client.disconnect();
       clientRef.current = null;
       setIsConnected(false);
@@ -342,6 +346,7 @@ const AdminChatPage: React.FC = () => {
   }, [messages, receiverUserId]);
 
   const sendMessage = () => {
+    console.log("SEND CALLED");
     const content = inputValue.trim();
     const receiverId = Number(receiverUserId);
 
@@ -362,18 +367,8 @@ const AdminChatPage: React.FC = () => {
       content,
     });
 
-    setMessages((prev) =>
-      mergeUniqueMessages(prev, [
-        {
-          id: buildMessageId(),
-          content,
-          sender: user?.username ?? "Admin",
-          receiverUserId: receiverId,
-          mine: true,
-          createdAt: new Date().toISOString(),
-        },
-      ]),
-    );
+    // Optimistic update removed to avoid duplicate render when server echoes
+    // the same message via /user/queue/messages.
     setInputValue("");
   };
 

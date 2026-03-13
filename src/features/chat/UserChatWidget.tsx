@@ -128,6 +128,8 @@ const UserChatWidget: React.FC = () => {
           },
         });
 
+        if (cancelled) return;
+
         unsubscribe = client.subscribe(USER_MESSAGES_DESTINATION, (payload, meta) => {
           console.log("[CHAT][USER] Message arrived:", {
             destination: meta.destination,
@@ -136,6 +138,7 @@ const UserChatWidget: React.FC = () => {
           });
           handleIncoming(payload);
         });
+        console.log("[CHAT][USER] Subscribed:", USER_MESSAGES_DESTINATION);
       } catch (error) {
         if (!cancelled) {
           setIsConnected(false);
@@ -150,6 +153,7 @@ const UserChatWidget: React.FC = () => {
     return () => {
       cancelled = true;
       unsubscribe?.();
+      console.log("[CHAT][USER] Unsubscribed:", USER_MESSAGES_DESTINATION);
       client.disconnect();
       clientRef.current = null;
       setIsConnected(false);
@@ -158,6 +162,7 @@ const UserChatWidget: React.FC = () => {
   }, [shouldRender]);
 
   const sendMessage = () => {
+    console.log("SEND CALLED");
     const content = inputValue.trim();
     if (!content) return;
 
@@ -168,16 +173,8 @@ const UserChatWidget: React.FC = () => {
     }
 
     client.send("/app/chat.user-to-admin", { content });
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: buildMessageId(),
-        content,
-        sender: user?.username ?? "Siz",
-        createdAt: new Date().toISOString(),
-        mine: true,
-      },
-    ]);
+    // Optimistic update removed to avoid duplicate render when server echoes
+    // the same message via /user/queue/messages.
     setInputValue("");
   };
 
