@@ -427,7 +427,8 @@
     pointer-events: none !important;
   }
 
-  body.recaptcha-login-page .grecaptcha-badge {
+  body.recaptcha-login-page .grecaptcha-badge,
+  body.recaptcha-auth-page .grecaptcha-badge {
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto !important;

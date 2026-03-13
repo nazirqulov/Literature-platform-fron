@@ -40,7 +40,8 @@ export interface UpdateProfileRequest {
 export interface RegisterRequest {
     username: string;
     email: string;
-    password?: string;
+    password: string;
+    recaptchaToken?: string;
 }
 
 export interface VerifyEmailRequest {
