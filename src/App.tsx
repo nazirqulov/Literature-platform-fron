@@ -17,6 +17,7 @@ import AdminBooksPage from './features/admin/AdminBooksPage';
 import AdminUsersPage from './features/admin/AdminUsersPage';
 import AdminAuthorsPage from './features/admin/AdminAuthorsPage';
 import AdminCategoriesPage from './features/admin/AdminCategoriesPage';
+import AdminChatPage from './features/admin/AdminChatPage';
 import BooksPage from './features/books/BooksPage';
 import BookReaderPage from './features/books/BookReaderPage';
 import BookDetailPage from './features/books/BookDetailPage';
@@ -30,6 +31,7 @@ import AdminRoute from './shared/components/AdminRoute';
 import { useAuth } from './context/useAuth';
 import { isSuperAdminRole } from './shared/utils/roleUtils';
 import { useTheme } from './context/useTheme';
+import UserChatWidget from './features/chat/UserChatWidget';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -101,6 +103,7 @@ const App: React.FC = () => {
               <Route path="/admin/profile" element={<ProfilePage />} />
               <Route path="/admin/authors" element={<AdminAuthorsPage />} />
               <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+              <Route path="/admin/chat" element={<AdminChatPage />} />
             </Route>
           </Route>
 
@@ -120,6 +123,7 @@ const App: React.FC = () => {
         pauseOnHover
         theme={theme === 'dark' ? 'dark' : 'light'}
       />
+      <UserChatWidget />
     </>
   );
 };
