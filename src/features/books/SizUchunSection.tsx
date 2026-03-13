@@ -44,6 +44,13 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
   const [items, setItems] = useState<BookProgressResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailsById, setDetailsById] = useState<Record<number, {
+    title?: string;
+    authorName?: string;
+    coverImage?: string | null;
+    averageRating?: number | null;
+  }>>({});
+  const enrichedIdsRef = useRef<Set<number>>(new Set());
   const [coversById, setCoversById] = useState<
     Record<number, string | null | undefined>
   >({});
@@ -73,6 +80,59 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const idsToFetch = items
+      .map((item) => item.bookId)
+      .filter((id): id is number => typeof id === "number")
+      .filter((id) => !enrichedIdsRef.current.has(id))
+      .filter((id) => {
+        const item = items.find((entry) => entry.bookId === id);
+        if (!item) return false;
+        const missingTitle = !item.bookTitle;
+        const missingAuthor = !item.bookAuthors;
+        const missingCover = !item.bookCover;
+        return missingTitle || missingAuthor || missingCover;
+      });
+
+    if (idsToFetch.length === 0) return;
+
+    const fetchDetails = async () => {
+      const results = await Promise.all(
+        idsToFetch.map(async (id) => {
+          try {
+            const { data } = await api.get(`/api/books/${id}`);
+            return { id, data };
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      setDetailsById((prev) => {
+        const next = { ...prev };
+        results.forEach((result) => {
+          if (!result) return;
+          const detail =
+            (result.data?.data as { title?: string; author?: { name?: string }; coverImage?: string | null; averageRating?: number | null } | undefined) ??
+            (result.data?.book as { title?: string; author?: { name?: string }; coverImage?: string | null; averageRating?: number | null } | undefined) ??
+            (result.data as { title?: string; author?: { name?: string }; coverImage?: string | null; averageRating?: number | null });
+          if (detail && typeof detail === "object") {
+            next[result.id] = {
+              title: detail.title,
+              authorName: detail.author?.name,
+              coverImage: detail.coverImage ?? null,
+              averageRating: detail.averageRating ?? null,
+            };
+          }
+          enrichedIdsRef.current.add(result.id);
+        });
+        return next;
+      });
+    };
+
+    void fetchDetails();
+  }, [items]);
 
   const fetchCoverForBook = useCallback(async (bookId: number) => {
     if (Number.isNaN(bookId)) return;
@@ -175,9 +235,13 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
       ) : (
         <div className={listClassName}>
           {visibleItems.map((item, index) => {
+            const detail =
+              typeof item.bookId === "number" ? detailsById[item.bookId] : undefined;
             const coverFromApi =
               typeof item.bookId === "number" ? coversById[item.bookId] : undefined;
-            const fallbackCover = resolveCoverUrl(item.bookCover ?? null);
+            const fallbackCover = resolveCoverUrl(
+              item.bookCover ?? detail?.coverImage ?? null,
+            );
             const coverUrl = coverFromApi ?? fallbackCover;
             const isCoverLoading =
               typeof item.bookId === "number" &&
@@ -186,7 +250,9 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
             const ratingLabel =
               typeof item.userRating === "number"
                 ? item.userRating.toFixed(1)
-                : null;
+                : typeof detail?.averageRating === "number"
+                  ? detail.averageRating.toFixed(1)
+                  : null;
             return (
               <button
                 key={`${item.bookId ?? "book"}-${index}`}
@@ -231,12 +297,14 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
                   <p className="truncate text-sm text-[#6B6B6B]">
                     <span className="text-[#9A9A9A] font-semibold">Kitob:</span>{" "}
                     <span className="text-[#2B2B2B] font-semibold">
-                      {item.bookTitle ?? "Kitob nomi ko'rsatilmagan"}
+                      {item.bookTitle ?? detail?.title ?? "Kitob nomi ko'rsatilmagan"}
                     </span>
                   </p>
                   <p className="truncate text-sm text-[#6B6B6B]">
                     <span className="text-[#9A9A9A] font-semibold">Muallif:</span>{" "}
-                    <span>{item.bookAuthors ?? "Muallif ko'rsatilmagan"}</span>
+                    <span>
+                      {item.bookAuthors ?? detail?.authorName ?? "Muallif ko'rsatilmagan"}
+                    </span>
                   </p>
                 </div>
               </button>
