@@ -37,6 +37,8 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
   const [items, setItems] = useState<BookResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailsById, setDetailsById] = useState<Record<number, BookResponse>>({});
+  const enrichedIdsRef = useRef<Set<number>>(new Set());
   const [coversById, setCoversById] = useState<
     Record<number, string | null | undefined>
   >({});
@@ -66,6 +68,55 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const idsToFetch = items
+      .map((item) => item.id)
+      .filter((id): id is number => typeof id === "number")
+      .filter((id) => !enrichedIdsRef.current.has(id))
+      .filter((id) => {
+        const item = items.find((entry) => entry.id === id);
+        if (!item) return false;
+        const missingTitle = !item.title;
+        const missingAuthor = !item.author?.name;
+        const missingCover = !item.coverImage;
+        const missingRating = typeof item.averageRating !== "number";
+        return missingTitle || missingAuthor || missingCover || missingRating;
+      });
+
+    if (idsToFetch.length === 0) return;
+
+    const fetchDetails = async () => {
+      const results = await Promise.all(
+        idsToFetch.map(async (id) => {
+          try {
+            const { data } = await api.get(`/api/books/${id}`);
+            return { id, data };
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      setDetailsById((prev) => {
+        const next = { ...prev };
+        results.forEach((result) => {
+          if (!result) return;
+          const detail =
+            (result.data?.data as BookResponse | undefined) ??
+            (result.data?.book as BookResponse | undefined) ??
+            (result.data as BookResponse);
+          if (detail && typeof detail === "object") {
+            next[result.id] = detail;
+          }
+          enrichedIdsRef.current.add(result.id);
+        });
+        return next;
+      });
+    };
+
+    void fetchDetails();
+  }, [items]);
 
   const visibleItems = useMemo(() => {
     return typeof limit === "number" ? items.slice(0, limit) : items;
@@ -168,24 +219,27 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
       ) : (
         <div className={listClassName}>
           {visibleItems.map((item, index) => {
+            const detail =
+              typeof item.id === "number" ? detailsById[item.id] : undefined;
+            const merged = detail ? { ...detail, ...item } : item;
             const coverFromApi =
-              typeof item.id === "number" ? coversById[item.id] : undefined;
-            const fallbackCover = resolveCoverUrl(item.coverImage ?? null);
+              typeof merged.id === "number" ? coversById[merged.id] : undefined;
+            const fallbackCover = resolveCoverUrl(merged.coverImage ?? null);
             const coverUrl = coverFromApi ?? fallbackCover;
             const isCoverLoading =
-              typeof item.id === "number" &&
-              coversById[item.id] === undefined &&
+              typeof merged.id === "number" &&
+              coversById[merged.id] === undefined &&
               !fallbackCover;
             const ratingValue =
-              typeof item.averageRating === "number"
-                ? Math.max(0, Math.min(5, item.averageRating))
+              typeof merged.averageRating === "number"
+                ? Math.max(0, Math.min(5, merged.averageRating))
                 : null;
             return (
               <button
-                key={`${item.id ?? "book"}-${index}`}
+                key={`${merged.id ?? "book"}-${index}`}
                 type="button"
                 onClick={() =>
-                  item.id ? navigate(`/books/${item.id}`) : undefined
+                  merged.id ? navigate(`/books/${merged.id}`) : undefined
                 }
                 className={`group relative overflow-hidden rounded-3xl border border-[#E3DBCF] bg-white text-left shadow-sm transition hover:border-[#6B4F3A]/40 hover:shadow-md ${
                   layout === "grid" ? "w-full" : "w-64 shrink-0"
@@ -195,7 +249,7 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
                   {coverUrl ? (
                     <img
                       src={coverUrl}
-                      alt={item.title ?? "Kitob"}
+                      alt={merged.title ?? "Kitob"}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : isCoverLoading ? (
@@ -218,12 +272,14 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
                     <p className="truncate text-sm text-[#6B6B6B]">
                       <span className="text-[#9A9A9A] font-semibold">Kitob:</span>{" "}
                       <span className="text-[#2B2B2B] font-semibold">
-                        {item.title ?? "Kitob nomi ko'rsatilmagan"}
+                        {merged.title ?? "Kitob nomi ko'rsatilmagan"}
                       </span>
                     </p>
                     <p className="truncate text-sm text-[#6B6B6B]">
                       <span className="text-[#9A9A9A] font-semibold">Muallif:</span>{" "}
-                      <span>{item.author?.name ?? "Muallif ko'rsatilmagan"}</span>
+                      <span>
+                        {merged.author?.name ?? "Muallif ko'rsatilmagan"}
+                      </span>
                     </p>
                   </div>
                   {ratingValue != null ? (

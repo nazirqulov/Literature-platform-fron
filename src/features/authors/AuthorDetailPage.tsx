@@ -96,11 +96,6 @@ const extractBookPayload = (data: unknown): BookResponse | null => {
   return possible;
 };
 
-const hasBookDetails = (book: BookResponse) =>
-  typeof book.title === "string" ||
-  typeof book.description === "string" ||
-  typeof book.author === "object";
-
 const resolveRatingValue = (book: BookResponse) => {
   const raw =
     book.averageRating ??
@@ -150,9 +145,23 @@ const AuthorDetailPage: React.FC = () => {
     setLoadingAuthor(true);
     setAuthorError(null);
 
-    api
-      .get(`/api/authors/${authorIdNumber}`)
-      .then(({ data }) => {
+    const loadAuthor = async () => {
+      try {
+        const { data } = await api.get("/api/authors/get-all");
+        if (cancelled) return;
+        const list = Array.isArray(data) ? (data as AuthorResponse[]) : [];
+        const found = list.find((item) => item?.id === authorIdNumber);
+        if (found) {
+          setAuthor(found);
+          setLoadingAuthor(false);
+          return;
+        }
+      } catch {
+        // fall through to try detail endpoint
+      }
+
+      try {
+        const { data } = await api.get(`/api/authors/${authorIdNumber}`);
         if (cancelled) return;
         const resolved = extractAuthorPayload(data);
         if (resolved) {
@@ -160,15 +169,16 @@ const AuthorDetailPage: React.FC = () => {
         } else {
           setAuthorError("Muallif ma'lumotlari topilmadi.");
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setAuthorError("Muallif ma'lumotlarini yuklashda xatolik yuz berdi.");
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoadingAuthor(false);
-      });
+      }
+    };
+
+    void loadAuthor();
 
     return () => {
       cancelled = true;
@@ -200,28 +210,30 @@ const AuthorDetailPage: React.FC = () => {
       }
 
       const detailIds = books
-        .filter((book) => book.id && !hasBookDetails(book))
-        .map((book) => book.id as number);
+        .map((book) => book.id)
+        .filter((id): id is number => typeof id === "number");
 
       if (detailIds.length > 0) {
         const detailResults = await Promise.all(
           detailIds.map(async (id) => {
             try {
               const detail = await api.get(`/api/books/${id}`);
-              return extractBookPayload(detail.data);
+              return { id, book: extractBookPayload(detail.data) };
             } catch {
-              return null;
+              return { id, book: null };
             }
           }),
         );
         if (booksRequestIdRef.current !== requestId) return;
         const detailById = new Map<number, BookResponse>();
-        detailResults.forEach((book) => {
-          if (book?.id) detailById.set(book.id, book);
+        detailResults.forEach((result) => {
+          if (result.book) {
+            detailById.set(result.id, result.book);
+          }
         });
         books = books.map((book) => {
           const detail = book.id ? detailById.get(book.id) : null;
-          return detail ? { ...detail, ...book } : book;
+          return detail ? { ...book, ...detail } : book;
         });
       }
 
@@ -319,6 +331,18 @@ const AuthorDetailPage: React.FC = () => {
   }, [authorBooks]);
 
   const resolvedAuthor = author ?? fallbackAuthor;
+  const profileAuthorIds = useMemo(
+    () => (authorIdNumber ? [authorIdNumber] : []),
+    [authorIdNumber],
+  );
+  const profilesById = useAuthorProfileImages(profileAuthorIds);
+  const profileUrl = resolveProfileUrl(resolvedAuthor?.profileImage ?? null);
+  const profileFromApi = authorIdNumber ? profilesById[authorIdNumber] : undefined;
+  const resolvedProfile = profileFromApi ?? profileUrl;
+  const booksCount =
+    typeof resolvedAuthor?.booksCount === "number"
+      ? resolvedAuthor.booksCount
+      : authorBooks.length;
 
   useEffect(() => {
     return () => {
@@ -356,17 +380,6 @@ const AuthorDetailPage: React.FC = () => {
       </section>
     );
   }
-
-  const profilesById = useAuthorProfileImages(
-    authorIdNumber ? [authorIdNumber] : [],
-  );
-  const profileUrl = resolveProfileUrl(resolvedAuthor?.profileImage ?? null);
-  const profileFromApi = authorIdNumber ? profilesById[authorIdNumber] : undefined;
-  const resolvedProfile = profileFromApi ?? profileUrl;
-  const booksCount =
-    typeof resolvedAuthor?.booksCount === "number"
-      ? resolvedAuthor.booksCount
-      : authorBooks.length;
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-10 space-y-8">

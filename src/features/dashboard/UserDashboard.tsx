@@ -217,7 +217,7 @@ const UserDashboard: React.FC = () => {
                         </span>
                         <Link
                             to="/profile"
-                            className="inline-flex items-center gap-2 rounded-full border border-[#6B4F3A]/20 bg-[#6B4F3A]/10 px-3 py-1 font-medium text-[#6B4F3A] transition hover:bg-[#6B4F3A]/15 dark:border-[#C9A27A]/30 dark:bg-[#C9A27A]/10 dark:text-[#E6D5C1] dark:hover:bg-[#C9A27A]/20"
+                            className="inline-flex items-center gap-2 rounded-full border border-[#6B4F3A]/30 bg-[#6B4F3A]/15 px-3 py-1 font-medium text-[#6B4F3A] transition hover:bg-[#6B4F3A]/20 dark:border-[#C9A27A]/30 dark:bg-[#C9A27A]/15 dark:text-[#E6D5C1] dark:hover:bg-[#C9A27A]/25"
                         >
                             Profilni boshqarish
                         </Link>
