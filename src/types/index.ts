@@ -50,7 +50,9 @@ export interface VerifyEmailRequest {
 
 export interface LoginRequest {
     usernameOrEmail: string;
-    password?: string;
+    password: string;
+    recaptchaToken?: string;
+    recaptchToken?: string;
 }
 
 export type BookStatus = "reading" | "completed" | "favorite";

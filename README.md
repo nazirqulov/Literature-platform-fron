@@ -55,6 +55,16 @@ const API_URL = "http://localhost:8080";
 
 Backend manzili o'zgarsa shu yerda yangilang.
 
+## reCAPTCHA (Login)
+
+Login sahifasi `reCAPTCHA v3` token yuboradi. Frontend uchun `.env` ga quyidagini qo'shing:
+
+```bash
+VITE_RECAPTCHA_SITE_KEY=your_site_key_here
+```
+
+Backend esa `/api/login` da `recaptchaToken` (va backward-compatibility uchun `recaptchToken`) ni tekshirishi kerak.
+
 ## Muhim routelar
 
 - `/dashboard` - user dashboard
