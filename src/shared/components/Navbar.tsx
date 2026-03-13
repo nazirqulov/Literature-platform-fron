@@ -120,7 +120,7 @@ const Navbar: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
-                                <Link to="/profile" className="text-[#6B6B6B] hover:text-[#6B4F3A] transition-colors italic">Profil</Link>
+                                <Link to="/profile" className="text-[#6B6B6B] hover:text-[#6B4F3A] transition-colors">Profil</Link>
                             </>
                         )}
                     </div>
