@@ -10,22 +10,20 @@ kontent boshqariladi.
 - Guest sahifa va umumiy tanishtiruv bloklari.
 - Autentifikatsiya: ro'yxatdan o'tish, login, email tasdiqlash.
 - Profil boshqaruvi va profil rasmi yangilash.
-- Dashboard:
-- O'qilgan kitoblar soni.
-- Mutolaa vaqti (oxirgi 7 kun va bugun).
-- "Siz uchun" tavsiyalar (top reyting).
-- "Eng ko'p o'qilganlar" (top 100 ko'rish).
-- Kitoblar:
-- Kitoblar ro'yxati va qidiruv.
+- Dashboard: o'qilgan kitoblar soni.
+- Dashboard: mutolaa vaqti (oxirgi 7 kun va bugun).
+- Dashboard: "Siz uchun" tavsiyalar (top reyting).
+- Dashboard: "Eng ko'p o'qilganlar" (top 100 ko'rish).
+- Dashboard: "Mualliflar" bo'limi (carousel).
+- Kitoblar: ro'yxat va qidiruv.
 - Kitob detail sahifasi (tavsif, meta, reyting va review).
 - PDF reader (zoom, sahifa boshqaruvi).
 - Audio player (orqaga/oldinga, pauza, tezlik).
 - Progress saqlash va tiklash (PDF + audio).
-- Admin panel (SUPERADMIN):
-- Kitoblar CRUD.
-- Muqova, PDF va audio upload.
-- PDF sahifa sonini avtomatik aniqlash.
-- Mualliflar, kategoriyalar, foydalanuvchilar boshqaruvi.
+- Admin panel (SUPERADMIN): kitoblar CRUD.
+- Admin panel: muqova, PDF va audio upload.
+- Admin panel: PDF sahifa sonini avtomatik aniqlash.
+- Admin panel: mualliflar, kategoriyalar, foydalanuvchilar boshqaruvi.
 - Light/Dark mode va responsiv dizayn.
 
 ## Texnologiyalar
@@ -66,8 +64,25 @@ Backend manzili o'zgarsa shu yerda yangilang.
 - `/books/:bookId/audio` - audio player
 - `/books/siz-uchun` - tavsiyalar (top reyting)
 - `/books/top-kitoblar` - eng ko'p o'qilganlar
+- `/authors` - mualliflar ro'yxati
+- `/authors/:authorId` - muallif detail + kitoblar
 - `/profile` - foydalanuvchi profili
 - `/admin/*` - admin panel
+
+## Book API
+
+- GET `/api/books/{id}` - kitob haqida ma'lumot (detail).
+- GET `/api/books/get-all` - kitoblar ro'yxati.
+- GET `/api/books/search?keyword=...` - qidiruv.
+- GET `/api/books/new-books` - oxirgi 3 kunda qo'shilgan kitoblar.
+
+## Author API
+
+- GET `/api/authors/get-all` - barcha mualliflar ro'yxati.
+- GET `/api/authors/{id}` - muallif ma'lumotlari (detail).
+- GET `/api/authors/authors/{id}` - muallifning kitoblari (list).
+- POST `/api/authors/upload-profile-image/{id}` - muallif rasmi yuklash (multipart/form-data, `file`).
+- GET `/api/authors/author-profileImage/{id}` - muallif rasmi (blob).
 
 ## PDF reader API
 
@@ -85,6 +100,12 @@ Backend manzili o'zgarsa shu yerda yangilang.
 - GET `/api/me/books/{bookId}/audio`
 - POST `/api/me/books/{bookId}/audio/save?duration=SECONDS`
 
+## Review API
+
+- PUT `/api/reviews/{bookId}/review-text` - review matnini yuborish (toxicity tekshiruvi).
+- GET `/api/reviews/book/{bookId}` - kitob bo'yicha reviewlar (page/size).
+- GET `/api/reviews/my-reviews` - foydalanuvchining reviewlari (page/size).
+
 ## Admin upload API
 
 - POST `/api/books/{id}/cover`
@@ -95,6 +116,9 @@ Backend manzili o'zgarsa shu yerda yangilang.
 
 - GET `/api/me/books/siz-uchun` (top reyting)
 - GET `/api/me/books/top-kitoblar` (top 100 ko'rish)
+- GET `/api/me/books/completed-count` (o'qilganlar soni)
+- GET `/api/me/books/mutoala-vaqti` (oxirgi 7 kun mutolaa vaqti)
+- GET `/api/me/books/mutoala-vaqti-today` (bugungi mutolaa vaqti)
 
 ## Skriptlar
 

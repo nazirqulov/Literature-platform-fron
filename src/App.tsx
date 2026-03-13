@@ -28,12 +28,14 @@ import AuthorDetailPage from './features/authors/AuthorDetailPage';
 import ProtectedRoute from './shared/components/ProtectedRoute';
 import AdminRoute from './shared/components/AdminRoute';
 import { useAuth } from './context/useAuth';
+import { isSuperAdminRole } from './shared/utils/roleUtils';
 import { useTheme } from './context/useTheme';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const App: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const isSuperAdmin = isSuperAdminRole(user?.role);
   const { theme } = useTheme();
 
   if (isLoading) {
@@ -51,7 +53,13 @@ const App: React.FC = () => {
         <Routes>
           <Route
             path="/"
-            element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <GuestDashboard />}
+            element={
+              isAuthenticated ? (
+                <Navigate to={isSuperAdmin ? "/admin" : "/dashboard"} replace />
+              ) : (
+                <GuestDashboard />
+              )
+            }
           />
 
           <Route element={<AuthLayout />}>

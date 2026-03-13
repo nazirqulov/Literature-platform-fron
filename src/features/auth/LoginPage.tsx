@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import * as yup from "yup";
 import { useAuth } from "../../context/useAuth";
+import { isSuperAdminRole } from "../../shared/utils/roleUtils";
 
 const schema = yup.object().shape({
   usernameOrEmail: yup
@@ -34,7 +35,7 @@ const LoginPage: React.FC = () => {
       const loggedInUser = await login(data);
       toast.success("Xush kelibsiz!");
       const role = loggedInUser.role;
-      if (role === "SUPERADMIN" || role === "ROLE_SUPERADMIN") {
+      if (isSuperAdminRole(role)) {
         navigate("/admin", { replace: true });
       } else {
         navigate("/dashboard", { replace: true });

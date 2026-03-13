@@ -6,6 +6,7 @@ import React, {
   type ReactNode,
 } from "react";
 import api from "../services/api";
+import { isSuperAdminRole, normalizeRole } from "../shared/utils/roleUtils";
 import type {
   LoginResponse,
   LoginRequest,
@@ -103,8 +104,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const refreshUser = async (): Promise<User> => {
     const { data } = await api.get<User>("/api/me");
-    setUser(data);
-    return data;
+    const normalizedRole = normalizeRole(data.role) ?? data.role;
+    const normalizedUser = { ...data, role: normalizedRole ?? data.role };
+    setUser(normalizedUser);
+    return normalizedUser;
   };
 
   const resolveImageFromBlob = async (blob: Blob): Promise<ResolvedImage> => {
@@ -190,10 +193,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);
 
-    const normalizeRole = (role?: string) =>
-      role ? role.replace(/^ROLE_/, "") : role;
-
-    const derivedRole = authorities?.some((role) => role.includes("SUPERADMIN"))
+    const derivedRole = authorities?.some((role) => isSuperAdminRole(role))
       ? "SUPERADMIN"
       : normalizeRole(authorities?.[0]) ?? "USER";
 

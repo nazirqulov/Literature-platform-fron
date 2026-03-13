@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
+import { isSuperAdminRole } from "../utils/roleUtils";
 
 interface AdminRouteProps {
   redirectPath?: string;
@@ -21,8 +22,7 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ redirectPath = "/dashboard" }) 
     return <Navigate to="/login" replace />;
   }
 
-  const role = user?.role;
-  const isSuperAdmin = role === "SUPERADMIN" || role === "ROLE_SUPERADMIN";
+  const isSuperAdmin = isSuperAdminRole(user?.role);
 
   if (!user || !isSuperAdmin) {
     return <Navigate to={redirectPath} replace />;

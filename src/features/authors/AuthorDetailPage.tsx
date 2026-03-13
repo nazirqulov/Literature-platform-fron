@@ -8,12 +8,25 @@ import {
   resolveProfileUrl,
 } from "./authorUtils";
 import type { AuthorResponse } from "./authorUtils";
+import useAuthorProfileImages from "./useAuthorProfileImages";
 
 interface BookResponse {
   id?: number;
   title?: string;
+  description?: string | null;
   author?: { id?: number; name?: string } | null;
+  categories?: { id?: number; name?: string }[] | null;
+  subCategoryName?: string[] | null;
+  isbn?: string | null;
+  publishedYear?: number | null;
+  publisher?: string | null;
+  language?: string | null;
+  pageCount?: number | null;
   coverImage?: string | null;
+  pdfFile?: string | null;
+  audioFile?: string | null;
+  viewCount?: number | null;
+  downloadCount?: number | null;
   averageRating?: number | null;
   rating?: number | null;
   avgRating?: number | null;
@@ -22,13 +35,13 @@ interface BookResponse {
   ratingCount?: number | null;
   reviewsCount?: number | null;
   reviewCount?: number | null;
+  isFeatured?: boolean | null;
+  isFavorite?: boolean | null;
+  createdAt?: string | null;
 }
 
 type PagedResponse<T> = {
   content?: T[];
-  totalPages?: number;
-  number?: number;
-  last?: boolean;
 };
 
 const resolveCoverUrl = (value?: string | null) => {
@@ -39,11 +52,54 @@ const resolveCoverUrl = (value?: string | null) => {
 };
 
 const normalizeBooks = (data: unknown): BookResponse[] => {
-  if (Array.isArray(data)) return data as BookResponse[];
+  if (Array.isArray(data)) {
+    if (data.every((item) => typeof item === "number")) {
+      return (data as number[]).map((id) => ({ id }));
+    }
+    return data as BookResponse[];
+  }
   if (!data || typeof data !== "object") return [];
-  const typed = data as PagedResponse<BookResponse>;
-  return Array.isArray(typed.content) ? typed.content : [];
+  const typed = data as PagedResponse<BookResponse> & {
+    data?: unknown;
+    books?: unknown;
+    authorsBooks?: unknown;
+    result?: unknown;
+  };
+  const candidates = [
+    typed.content,
+    typed.data,
+    typed.books,
+    typed.authorsBooks,
+    typed.result,
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      if (candidate.every((item) => typeof item === "number")) {
+        return (candidate as number[]).map((id) => ({ id }));
+      }
+      return candidate as BookResponse[];
+    }
+  }
+  return [];
 };
+
+const extractBookPayload = (data: unknown): BookResponse | null => {
+  if (!data || typeof data !== "object") return null;
+  const typed = data as Record<string, unknown>;
+  const content = typed.content;
+  const possible =
+    (typed.book as BookResponse | undefined) ??
+    (typed.data as BookResponse | undefined) ??
+    (!Array.isArray(content) ? (content as BookResponse | undefined) : undefined) ??
+    (data as BookResponse);
+  if (!possible || typeof possible !== "object") return null;
+  return possible;
+};
+
+const hasBookDetails = (book: BookResponse) =>
+  typeof book.title === "string" ||
+  typeof book.description === "string" ||
+  typeof book.author === "object";
 
 const resolveRatingValue = (book: BookResponse) => {
   const raw =
@@ -75,10 +131,8 @@ const AuthorDetailPage: React.FC = () => {
   const [authorBooks, setAuthorBooks] = useState<BookResponse[]>([]);
   const [booksLoading, setBooksLoading] = useState(false);
   const [booksError, setBooksError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const booksRequestIdRef = useRef(0);
 
   const [coversById, setCoversById] = useState<
     Record<number, string | null | undefined>
@@ -121,69 +175,79 @@ const AuthorDetailPage: React.FC = () => {
     };
   }, [authorIdNumber]);
 
-  const loadBooks = useCallback(
-    async (pageIndex: number, append: boolean) => {
-      if (!authorIdNumber) return;
-      const isNextPage = append && pageIndex > 0;
-      if (isNextPage) {
-        setLoadingMore(true);
-      } else {
-        setBooksLoading(true);
-      }
-      setBooksError(null);
+  const loadBooks = useCallback(async () => {
+    if (!authorIdNumber) return;
+    const requestId = booksRequestIdRef.current + 1;
+    booksRequestIdRef.current = requestId;
+    setBooksLoading(true);
+    setBooksError(null);
 
-      try {
-        const { data } = await api.get<PagedResponse<BookResponse>>(
-          `/api/books/author/${authorIdNumber}`,
-          { params: { page: pageIndex, size: 20 } },
+    try {
+      const { data } = await api.get<BookResponse[]>(
+        `/api/authors/authors/${authorIdNumber}`,
+      );
+      if (booksRequestIdRef.current !== requestId) return;
+      let books = normalizeBooks(data);
+
+      if (books.length === 0) {
+        const fallback = await api.get(`/api/books/get-all`, {
+          params: { page: 0, size: 500 },
+        });
+        const allBooks = normalizeBooks(fallback.data);
+        books = allBooks.filter(
+          (book) => book.author?.id === authorIdNumber,
         );
-        const content = normalizeBooks(data);
-        setAuthorBooks((prev) => (append ? [...prev, ...content] : content));
-        const totalPages =
-          typeof data?.totalPages === "number" ? data.totalPages : null;
-        const currentPage =
-          typeof data?.number === "number" ? data.number : pageIndex;
-        const isLast =
-          typeof data?.last === "boolean"
-            ? data.last
-            : totalPages != null
-              ? currentPage >= totalPages - 1
-              : content.length === 0;
-        setHasMore(!isLast);
-        setPage(currentPage);
-      } catch {
-        setBooksError("Muallif kitoblarini yuklashda xatolik yuz berdi.");
-      } finally {
-        setBooksLoading(false);
-        setLoadingMore(false);
       }
-    },
-    [authorIdNumber],
-  );
+
+      const detailIds = books
+        .filter((book) => book.id && !hasBookDetails(book))
+        .map((book) => book.id as number);
+
+      if (detailIds.length > 0) {
+        const detailResults = await Promise.all(
+          detailIds.map(async (id) => {
+            try {
+              const detail = await api.get(`/api/books/${id}`);
+              return extractBookPayload(detail.data);
+            } catch {
+              return null;
+            }
+          }),
+        );
+        if (booksRequestIdRef.current !== requestId) return;
+        const detailById = new Map<number, BookResponse>();
+        detailResults.forEach((book) => {
+          if (book?.id) detailById.set(book.id, book);
+        });
+        books = books.map((book) => {
+          const detail = book.id ? detailById.get(book.id) : null;
+          return detail ? { ...detail, ...book } : book;
+        });
+      }
+
+      setAuthorBooks(books);
+    } catch {
+      setBooksError("Muallif kitoblarini yuklashda xatolik yuz berdi.");
+    } finally {
+      if (booksRequestIdRef.current === requestId) {
+        setBooksLoading(false);
+      }
+    }
+  }, [authorIdNumber]);
 
   useEffect(() => {
     setAuthorBooks([]);
-    setPage(0);
-    setHasMore(false);
     if (!authorIdNumber) return;
-    void loadBooks(0, false);
+    void loadBooks();
   }, [authorIdNumber, loadBooks]);
-
-  const authorBooksSorted = useMemo(() => {
-    return [...authorBooks].sort((a, b) => {
-      const left = resolveRatingValue(a) ?? 0;
-      const right = resolveRatingValue(b) ?? 0;
-      return right - left;
-    });
-  }, [authorBooks]);
 
   const filteredBooks = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return authorBooksSorted;
-    return authorBooksSorted.filter((book) =>
+    if (!term) return authorBooks;
+    return authorBooks.filter((book) =>
       (book.title ?? "").toLowerCase().includes(term),
     );
-  }, [authorBooksSorted, searchTerm]);
+  }, [authorBooks, searchTerm]);
 
   const fetchCoverForBook = useCallback(async (bookId: number) => {
     if (Number.isNaN(bookId)) return;
@@ -214,7 +278,7 @@ const AuthorDetailPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const ids = authorBooksSorted
+    const ids = authorBooks
       .map((book) => book.id)
       .filter((id): id is number => !!id);
     const idSet = new Set(ids);
@@ -237,7 +301,24 @@ const AuthorDetailPage: React.FC = () => {
         void fetchCoverForBook(id);
       }
     });
-  }, [authorBooksSorted, coversById, fetchCoverForBook]);
+  }, [authorBooks, coversById, fetchCoverForBook]);
+
+  const fallbackAuthor = useMemo(() => {
+    const bookWithAuthor = authorBooks.find((book) => book.author);
+    if (!bookWithAuthor?.author) return null;
+    const raw = bookWithAuthor.author;
+    return {
+      id: raw.id,
+      name: raw.name,
+      biography: undefined,
+      birthDate: undefined,
+      deathDate: undefined,
+      nationality: undefined,
+      profileImage: undefined,
+    } as AuthorResponse;
+  }, [authorBooks]);
+
+  const resolvedAuthor = author ?? fallbackAuthor;
 
   useEffect(() => {
     return () => {
@@ -256,7 +337,7 @@ const AuthorDetailPage: React.FC = () => {
     );
   }
 
-  if (loadingAuthor) {
+  if (loadingAuthor && !resolvedAuthor) {
     return (
       <section className="max-w-6xl mx-auto px-4 py-10">
         <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
@@ -266,7 +347,7 @@ const AuthorDetailPage: React.FC = () => {
     );
   }
 
-  if (authorError || !author) {
+  if (!resolvedAuthor && (authorError || !booksLoading)) {
     return (
       <section className="max-w-6xl mx-auto px-4 py-10">
         <div className="glass rounded-2xl p-6 text-sm text-[#C97B63]">
@@ -276,9 +357,16 @@ const AuthorDetailPage: React.FC = () => {
     );
   }
 
-  const profileUrl = resolveProfileUrl(author.profileImage ?? null);
+  const profilesById = useAuthorProfileImages(
+    authorIdNumber ? [authorIdNumber] : [],
+  );
+  const profileUrl = resolveProfileUrl(resolvedAuthor?.profileImage ?? null);
+  const profileFromApi = authorIdNumber ? profilesById[authorIdNumber] : undefined;
+  const resolvedProfile = profileFromApi ?? profileUrl;
   const booksCount =
-    typeof author.booksCount === "number" ? author.booksCount : authorBooksSorted.length;
+    typeof resolvedAuthor?.booksCount === "number"
+      ? resolvedAuthor.booksCount
+      : authorBooks.length;
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-10 space-y-8">
@@ -294,22 +382,22 @@ const AuthorDetailPage: React.FC = () => {
       <div className="glass rounded-3xl border border-[#E3DBCF] p-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
           <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border border-[#E3DBCF] bg-[#F5F1E8] text-[#6B4F3A]">
-            {profileUrl ? (
+            {resolvedProfile ? (
               <img
-                src={profileUrl}
-                alt={author.name ?? "Muallif"}
+                src={resolvedProfile}
+                alt={resolvedAuthor?.name ?? "Muallif"}
                 className="h-full w-full object-cover"
               />
             ) : (
               <span className="text-lg font-semibold">
-                {getAuthorInitials(author.name)}
+                {getAuthorInitials(resolvedAuthor?.name)}
               </span>
             )}
           </div>
           <div className="flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-bold text-[#2B2B2B]">
-                {author.name ?? "Muallif nomi ko'rsatilmagan"}
+                {resolvedAuthor?.name ?? "Muallif nomi ko'rsatilmagan"}
               </h1>
               <span className="inline-flex items-center gap-2 rounded-full border border-[#E3DBCF] bg-[#F5F1E8] px-3 py-1 text-xs font-semibold text-[#6B6B6B]">
                 <User size={12} />
@@ -320,16 +408,20 @@ const AuthorDetailPage: React.FC = () => {
               <span>
                 Millati:{" "}
                 <span className="text-[#2B2B2B]">
-                  {author.nationality ?? "--"}
+                  {resolvedAuthor?.nationality ?? "--"}
                 </span>
               </span>
               <span>
                 Tug'ilgan sana:{" "}
-                <span className="text-[#2B2B2B]">{author.birthDate ?? "--"}</span>
+                <span className="text-[#2B2B2B]">
+                  {resolvedAuthor?.birthDate ?? "--"}
+                </span>
               </span>
               <span>
                 Vafot sanasi:{" "}
-                <span className="text-[#2B2B2B]">{author.deathDate ?? "--"}</span>
+                <span className="text-[#2B2B2B]">
+                  {resolvedAuthor?.deathDate ?? "--"}
+                </span>
               </span>
             </div>
           </div>
@@ -341,8 +433,8 @@ const AuthorDetailPage: React.FC = () => {
           Muallif haqida
         </p>
         <p className="mt-2 text-sm text-[#6B6B6B]">
-          {author.biography?.trim()
-            ? author.biography
+          {resolvedAuthor?.biography?.trim()
+            ? resolvedAuthor.biography
             : "Muallif haqida ma'lumot mavjud emas."}
         </p>
       </div>
@@ -463,18 +555,6 @@ const AuthorDetailPage: React.FC = () => {
           </div>
         )}
 
-        {!booksLoading && !booksError && hasMore ? (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => void loadBooks(page + 1, true)}
-              disabled={loadingMore}
-              className="rounded-full border border-[#E3DBCF] px-6 py-2 text-sm font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-60"
-            >
-              {loadingMore ? "Yuklanmoqda..." : "Ko'proq ko'rish"}
-            </button>
-          </div>
-        ) : null}
       </div>
     </section>
   );

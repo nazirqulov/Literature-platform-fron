@@ -8,6 +8,7 @@ import {
   resolveProfileUrl,
 } from "./authorUtils";
 import type { AuthorResponse } from "./authorUtils";
+import useAuthorProfileImages from "./useAuthorProfileImages";
 
 const AuthorsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -51,6 +52,15 @@ const AuthorsPage: React.FC = () => {
     });
   }, [authors, searchTerm]);
 
+  const authorIds = useMemo(
+    () =>
+      filteredAuthors
+        .map((author) => author.id)
+        .filter((id): id is number => typeof id === "number"),
+    [filteredAuthors],
+  );
+  const profilesById = useAuthorProfileImages(authorIds);
+
   return (
     <section className="max-w-7xl mx-auto px-4 py-10 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -92,6 +102,9 @@ const AuthorsPage: React.FC = () => {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {filteredAuthors.map((author, index) => {
             const profileUrl = resolveProfileUrl(author.profileImage ?? null);
+            const profileFromApi =
+              typeof author.id === "number" ? profilesById[author.id] : undefined;
+            const resolvedProfile = profileFromApi ?? profileUrl;
             const booksCount =
               typeof author.booksCount === "number" ? author.booksCount : null;
             return (
@@ -104,9 +117,9 @@ const AuthorsPage: React.FC = () => {
                 className="group glass rounded-2xl border border-[#E3DBCF] p-4 text-center transition hover:border-[#6B4F3A]/40 hover:shadow-md"
               >
                 <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-[#E3DBCF] bg-[#F5F1E8] text-[#6B4F3A]">
-                  {profileUrl ? (
+                  {resolvedProfile ? (
                     <img
-                      src={profileUrl}
+                      src={resolvedProfile}
                       alt={author.name ?? "Muallif"}
                       className="h-full w-full object-cover"
                     />

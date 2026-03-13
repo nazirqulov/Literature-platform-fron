@@ -8,6 +8,7 @@ import FavoriteBooksPreview from './FavoriteBooksPreview';
 import CompletedBooksPreview from './CompletedBooksPreview';
 import ReadingBooksPreview from './ReadingBooksPreview';
 import { Loader2, Settings, List, BookOpen, CheckCircle2, Heart, ChevronDown } from 'lucide-react';
+import { isSuperAdminRole } from '../../shared/utils/roleUtils';
 
 const ProfilePage: React.FC = () => {
     const { user, refreshUser, refreshProfileImageUrl, isLoading } = useAuth();
@@ -29,7 +30,7 @@ const ProfilePage: React.FC = () => {
         );
     }
 
-    const isSuperAdmin = user.role === 'SUPERADMIN' || user.role === 'ROLE_SUPERADMIN';
+    const isSuperAdmin = isSuperAdminRole(user.role);
     const sections = [
         {
             id: 'reading' as const,
