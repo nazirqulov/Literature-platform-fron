@@ -173,6 +173,7 @@ const BookDetailPage: React.FC = () => {
   const [reviewsLoadingMore, setReviewsLoadingMore] = useState(false);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
   const [myReviewIds, setMyReviewIds] = useState<Set<number>>(new Set());
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const reviewsRequestIdRef = useRef(0);
   const myReviewPrefilledRef = useRef(false);
 
@@ -428,11 +429,6 @@ const BookDetailPage: React.FC = () => {
     void loadMyReview();
   }, [loadMyReview]);
 
-  const reviewCountLabel = useMemo(() => {
-    if (reviews.length === 0) return "Hozircha review yo'q.";
-    return `${reviews.length} ta review`;
-  }, [reviews.length]);
-
   const sortedReviews = useMemo(() => {
     const copy = [...reviews];
     copy.sort((a, b) => {
@@ -456,14 +452,8 @@ const BookDetailPage: React.FC = () => {
     [myReviewIds, user?.id],
   );
 
-  const myReviews = useMemo(
-    () => sortedReviews.filter((review) => isMyReview(review)),
-    [isMyReview, sortedReviews],
-  );
-  const otherReviews = useMemo(
-    () => sortedReviews.filter((review) => !isMyReview(review)),
-    [isMyReview, sortedReviews],
-  );
+  const reviewList = sortedReviews;
+  const visibleReviews = showAllReviews ? reviewList : reviewList.slice(0, 5);
 
   if (loading) {
     return (
@@ -638,13 +628,13 @@ const BookDetailPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="glass rounded-2xl border border-[#E3DBCF] p-5 space-y-6">
+        <div className="rounded-2xl border border-[#E3DBCF] bg-white/90 p-6 text-[#2B2B2B] shadow-[0_20px_60px_rgba(0,0,0,0.12)] space-y-6 dark:border-white/10 dark:bg-[#1C2026] dark:text-[#F5F1E8] dark:shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-semibold text-[#2B2B2B]">
+            <p className="text-sm font-semibold tracking-wide text-[#2B2B2B] dark:text-[#F5F1E8]">
               Fikr yozish
             </p>
-            <p className="text-xs text-[#6B6B6B]">
-              Matn toxic yoki haqoratli bo'lsa, review ko'rsatilmaydi.
+            <p className="text-xs text-[#6B6B6B] dark:text-[#A7ADB6]">
+              Haqoratli yoki nomaqbul mazmundagi izohlar ko‘rsatilmaydi.
             </p>
           </div>
 
@@ -653,14 +643,16 @@ const BookDetailPage: React.FC = () => {
               value={reviewText}
               onChange={(event) => setReviewText(event.target.value)}
               placeholder="Kitob haqida fikringizni yozing..."
-              className="min-h-[110px] w-full rounded-xl border border-[#E3DBCF] bg-white px-3 py-2 text-sm text-[#2B2B2B] placeholder:text-[#9A9A9A]"
+              className="min-h-[120px] w-full rounded-xl border border-[#E3DBCF] bg-white px-4 py-3 text-sm text-[#2B2B2B] placeholder:text-[#9A9A9A] focus:outline-none focus:ring-2 focus:ring-[#C9A27A]/35 dark:border-white/10 dark:bg-[#14181E] dark:text-[#F5F1E8] dark:placeholder:text-[#7E848F] dark:focus:ring-[#C9A27A]/40"
               disabled={reviewSubmitting}
             />
 
             {reviewMessage ? (
               <p
                 className={`text-xs ${
-                  reviewStatus === "error" ? "text-[#C97B63]" : "text-[#6B6B6B]"
+                  reviewStatus === "error"
+                    ? "text-[#C97B63] dark:text-[#F28B82]"
+                    : "text-[#6B6B6B] dark:text-[#A7ADB6]"
                 }`}
               >
                 {reviewMessage}
@@ -668,135 +660,81 @@ const BookDetailPage: React.FC = () => {
             ) : null}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-[#9A9A9A]">
-                {reviewSubmitting ? "Tekshirilmoqda..." : "Reviewingiz tekshirilib saqlanadi."}
+              <span className="text-xs text-[#9A9A9A] dark:text-[#8D94A1]">
+                {reviewSubmitting
+                  ? "Tekshirilmoqda..."
+                  : "Izohlar tekshirilib saqlanadi."}
               </span>
               <button
                 type="button"
                 onClick={submitReviewText}
                 disabled={reviewSubmitting || reviewText.trim().length === 0}
-                className="inline-flex items-center justify-center rounded-lg bg-[#6B4F3A] px-4 py-2 text-sm font-semibold text-[#F5F1E8] transition hover:bg-[#5A4030] disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-lg bg-[#6B4F3A] px-4 py-2 text-sm font-semibold text-[#F5F1E8] transition hover:bg-[#5A4030] disabled:opacity-60 dark:bg-[#C9A27A] dark:text-[#1B1F24] dark:hover:bg-[#B8926E]"
               >
                 {reviewSubmitting ? "Tekshirilmoqda..." : "Fikrni yuborish"}
               </button>
             </div>
           </div>
-          <div className="space-y-4 border-t border-[#E3DBCF] pt-4">
+
+          <div className="space-y-4 border-t border-[#E3DBCF] pt-4 dark:border-white/10">
             {reviewsLoading ? (
-              <div className="text-sm text-[#6B6B6B]">Yuklanmoqda...</div>
+              <div className="text-sm text-[#6B6B6B] dark:text-[#A7ADB6]">
+                Yuklanmoqda...
+              </div>
             ) : reviewsError ? (
-              <div className="text-sm text-[#C97B63]">{reviewsError}</div>
+              <div className="text-sm text-[#C97B63] dark:text-[#F28B82]">
+                {reviewsError}
+              </div>
             ) : reviews.length === 0 ? (
-              <div className="text-sm text-[#6B6B6B]">
+              <div className="text-sm text-[#6B6B6B] dark:text-[#A7ADB6]">
                 Hozircha reviewlar mavjud emas.
               </div>
             ) : (
-              <div className="space-y-4">
-                {myReviews.length > 0 ? (
-                  <div className="space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-[#6B4F3A]">
-                      Sizning reviewingiz
-                    </p>
-                    {myReviews.map((review) => {
-                      const rating =
-                        typeof review.rating === "number" ? review.rating : null;
-                      return (
+              <div
+                className={`space-y-3 ${
+                  showAllReviews ? "max-h-[340px] overflow-y-auto pr-1" : ""
+                }`}
+              >
+                {visibleReviews.map((review) => {
+                  const mine = isMyReview(review);
+                  return (
+                    <div
+                      key={review.id ?? `${review.bookId}-${review.comment}`}
+                      className={`rounded-xl border px-4 py-3 ${
+                        mine
+                          ? "border-[#C9A27A]/50 bg-[#F5F1E8] dark:bg-[#222831]"
+                          : "border-[#E3DBCF] bg-white dark:border-white/10 dark:bg-[#171B21]"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
                         <div
-                          key={review.id ?? `${review.bookId}-${review.comment}`}
-                          className="rounded-xl border border-[#6B4F3A]/30 bg-[#F5F1E8] px-4 py-3"
+                          className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${
+                            mine
+                              ? "bg-[#6B4F3A] text-[#F5F1E8] dark:bg-[#C9A27A] dark:text-[#1B1F24]"
+                              : "bg-[#F5F1E8] text-[#6B4F3A] dark:bg-[#2A3038] dark:text-[#C9A27A]"
+                          }`}
                         >
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-sm font-semibold text-[#6B4F3A]">
-                              {getUserInitials(review.user)}
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-sm font-semibold text-[#2B2B2B]">
-                                  {resolveReviewUserName(review.user)}
+                          {getUserInitials(review.user)}
+                        </div>
+                          <div className="flex-1 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold text-[#2B2B2B] dark:text-[#F5F1E8]">
+                                {resolveReviewUserName(review.user)}
+                              </span>
+                              {mine ? (
+                                <span className="rounded-full border border-[#6B4F3A]/40 px-2 py-0.5 text-[10px] font-semibold text-[#6B4F3A] dark:border-[#C9A27A]/40 dark:text-[#C9A27A]">
+                                  You
                                 </span>
-                                <span className="rounded-full border border-[#6B4F3A]/30 px-2 py-0.5 text-[10px] font-semibold text-[#6B4F3A]">
-                                  Siz
-                                </span>
-                                {rating != null ? (
-                                  <span className="inline-flex items-center gap-1 text-xs text-[#C97B63]">
-                                    <Star size={14} className="fill-[#C97B63]" />
-                                    {rating.toFixed(1)}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="text-sm text-[#6B6B6B]">
-                                {review.comment ?? "Fikr ko'rsatilmagan."}
-                              </p>
-                              {review.createdAt ? (
-                                <p className="text-xs text-[#9A9A9A]">
-                                  {new Date(review.createdAt).toLocaleString("uz-UZ")}
-                                </p>
                               ) : null}
                             </div>
+                            <p className="text-sm text-[#6B6B6B] dark:text-[#C7CBD3]">
+                              {review.comment ?? "Fikr ko'rsatilmagan."}
+                            </p>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
-
-                <div className="space-y-3">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-widest text-[#9A9A9A]">
-                        Boshqa foydalanuvchilar
-                      </p>
-                      <p className="text-xs text-[#6B6B6B]">{reviewCountLabel}</p>
-                    </div>
-                    <div className="text-xs text-[#9A9A9A]">
-                      Yangi reviewlar tasdiqlangach ko'rinadi.
-                    </div>
-                  </div>
-
-                  {otherReviews.length === 0 ? (
-                    <div className="text-sm text-[#6B6B6B]">
-                      Boshqa foydalanuvchilar reviewi yo'q.
-                    </div>
-                  ) : (
-                    otherReviews.map((review) => {
-                      const rating =
-                        typeof review.rating === "number" ? review.rating : null;
-                      return (
-                        <div
-                          key={review.id ?? `${review.bookId}-${review.comment}`}
-                          className="rounded-xl border border-[#E3DBCF] bg-white px-4 py-3"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5F1E8] text-sm font-semibold text-[#6B4F3A]">
-                              {getUserInitials(review.user)}
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-sm font-semibold text-[#2B2B2B]">
-                                  {resolveReviewUserName(review.user)}
-                                </span>
-                                {rating != null ? (
-                                  <span className="inline-flex items-center gap-1 text-xs text-[#C97B63]">
-                                    <Star size={14} className="fill-[#C97B63]" />
-                                    {rating.toFixed(1)}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="text-sm text-[#6B6B6B]">
-                                {review.comment ?? "Fikr ko'rsatilmagan."}
-                              </p>
-                              {review.createdAt ? (
-                                <p className="text-xs text-[#9A9A9A]">
-                                  {new Date(review.createdAt).toLocaleString("uz-UZ")}
-                                </p>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+                      </div>
+                    );
+                })}
               </div>
             )}
 
@@ -806,9 +744,21 @@ const BookDetailPage: React.FC = () => {
                   type="button"
                   onClick={() => loadReviews(reviewsPage + 1, true)}
                   disabled={reviewsLoadingMore}
-                  className="rounded-full border border-[#E3DBCF] px-6 py-2 text-sm font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-60"
+                  className="rounded-full border border-[#E3DBCF] px-6 py-2 text-sm font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-60 dark:border-white/10 dark:text-[#C9A27A] dark:hover:bg-white/5"
                 >
                   {reviewsLoadingMore ? "Yuklanmoqda..." : "Ko'proq ko'rish"}
+                </button>
+              </div>
+            ) : null}
+
+            {reviewList.length > 5 ? (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAllReviews((prev) => !prev)}
+                  className="rounded-full border border-[#E3DBCF] px-5 py-2 text-xs font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] dark:border-white/10 dark:text-[#C9A27A] dark:hover:bg-white/5"
+                >
+                  {showAllReviews ? "Yopish" : "Barchasini ko'rish"}
                 </button>
               </div>
             ) : null}

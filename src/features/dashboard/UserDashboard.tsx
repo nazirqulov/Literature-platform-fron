@@ -46,6 +46,9 @@ const UserDashboard: React.FC = () => {
     const [readingTimeMinutes, setReadingTimeMinutes] = useState<number | null>(null);
     const [isReadingTimeLoading, setIsReadingTimeLoading] = useState(false);
     const [readingTimeError, setReadingTimeError] = useState<string | null>(null);
+    const [readingTimeTotalMinutes, setReadingTimeTotalMinutes] = useState<number | null>(null);
+    const [isReadingTimeTotalLoading, setIsReadingTimeTotalLoading] = useState(false);
+    const [readingTimeTotalError, setReadingTimeTotalError] = useState<string | null>(null);
     const [readingTimeTodayMinutes, setReadingTimeTodayMinutes] = useState<number | null>(null);
     const [isReadingTimeTodayLoading, setIsReadingTimeTodayLoading] = useState(false);
     const [readingTimeTodayError, setReadingTimeTodayError] = useState<string | null>(null);
@@ -119,6 +122,33 @@ const UserDashboard: React.FC = () => {
     useEffect(() => {
         let isActive = true;
 
+        const fetchReadingTimeTotal = async () => {
+            setIsReadingTimeTotalLoading(true);
+            setReadingTimeTotalError(null);
+            try {
+                const { data } = await api.get<number | string>('/api/me/books/full-mutoala-vaqti');
+                if (!isActive) return;
+                setReadingTimeTotalMinutes(parseReadingTimeMinutes(data));
+            } catch {
+                if (!isActive) return;
+                setReadingTimeTotalError("Umumiy mutolaa vaqtini yuklashda xatolik yuz berdi.");
+                setReadingTimeTotalMinutes(null);
+            } finally {
+                if (!isActive) return;
+                setIsReadingTimeTotalLoading(false);
+            }
+        };
+
+        void fetchReadingTimeTotal();
+
+        return () => {
+            isActive = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        let isActive = true;
+
         const fetchReadingTimeToday = async () => {
             setIsReadingTimeTodayLoading(true);
             setReadingTimeTodayError(null);
@@ -152,6 +182,16 @@ const UserDashboard: React.FC = () => {
         typeof readingTimeMinutes === 'number' ? formatReadingTime(readingTimeMinutes) : null;
     const readingTimeDisplayValue = isReadingTimeLoading ? '...' : readingTimeDisplay?.value ?? '--';
     const readingTimeDisplayUnit = isReadingTimeLoading ? undefined : readingTimeDisplay?.unit;
+    const readingTimeTotalDisplay =
+        typeof readingTimeTotalMinutes === 'number'
+            ? formatReadingTime(readingTimeTotalMinutes)
+            : null;
+    const readingTimeTotalDisplayValue = isReadingTimeTotalLoading
+        ? '...'
+        : readingTimeTotalDisplay?.value ?? '--';
+    const readingTimeTotalDisplayUnit = isReadingTimeTotalLoading
+        ? undefined
+        : readingTimeTotalDisplay?.unit;
     const readingTimeTodayDisplay =
         typeof readingTimeTodayMinutes === 'number'
             ? formatReadingTime(readingTimeTodayMinutes)
@@ -170,10 +210,15 @@ const UserDashboard: React.FC = () => {
                     <h1 className="text-3xl font-bold uppercase tracking-tight text-[#2B2B2B] sm:text-4xl">
                         Xush kelibsiz, <span className="text-[#6B4F3A]">{user?.username}</span>!
                     </h1>
-                    <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:gap-4">
-                        <p className="text-[#6B6B6B] italic">Sizning mutolaa olamingiz</p>
-                        <span className="hidden text-[#6B6B6B] sm:inline">|</span>
-                        <Link to="/profile" className="text-[#6B4F3A]/80 hover:text-[#6B4F3A] font-medium transition-colors border-b border-[#6B4F3A]/30 w-fit">
+                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-[#E3DBCF] bg-white/80 px-3 py-1 text-[#6B6B6B] dark:border-white/10 dark:bg-[#1C2026] dark:text-[#C7CBD3]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#6B4F3A] dark:bg-[#C9A27A]" />
+                            Sizning mutolaa olamingiz
+                        </span>
+                        <Link
+                            to="/profile"
+                            className="inline-flex items-center gap-2 rounded-full border border-[#6B4F3A]/20 bg-[#6B4F3A]/10 px-3 py-1 font-medium text-[#6B4F3A] transition hover:bg-[#6B4F3A]/15 dark:border-[#C9A27A]/30 dark:bg-[#C9A27A]/10 dark:text-[#E6D5C1] dark:hover:bg-[#C9A27A]/20"
+                        >
                             Profilni boshqarish
                         </Link>
                     </div>
@@ -192,7 +237,7 @@ const UserDashboard: React.FC = () => {
             </header>
 
             {/* Stats Grid */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div
                     role="button"
                     tabIndex={0}
@@ -216,6 +261,34 @@ const UserDashboard: React.FC = () => {
                         <p className="text-sm text-[#6B6B6B]">O'qilgan kitoblar</p>
                         {completedCountError ? (
                             <p className="text-xs text-[#C97B63] mt-2">{completedCountError}</p>
+                        ) : null}
+                    </div>
+                </div>
+
+                <div className="glass-dark p-6 rounded-3xl border-[#E3DBCF] space-y-4 relative overflow-hidden">
+                    <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#8FA68E]/10 blur-2xl" />
+                    <div className="flex items-center justify-between relative">
+                        <div className="p-3 bg-[#8FA68E]/20 rounded-2xl">
+                            <Clock className="text-[#8FA68E]" size={24} />
+                        </div>
+                        <span className="text-xs text-[#9A9A9A] font-medium">Jami</span>
+                    </div>
+                    <div className="relative">
+                        <div className="flex items-end gap-1">
+                            <span
+                                className={`text-3xl font-bold text-[#2B2B2B] sm:text-4xl ${isReadingTimeTotalLoading ? 'animate-pulse' : ''}`}
+                            >
+                                {readingTimeTotalDisplayValue}
+                            </span>
+                            {readingTimeTotalDisplayUnit ? (
+                                <span className="mb-1 text-sm font-semibold text-[#6B6B6B]">
+                                    {readingTimeTotalDisplayUnit}
+                                </span>
+                            ) : null}
+                        </div>
+                        <p className="text-sm text-[#6B6B6B]">Mutolaa vaqti</p>
+                        {readingTimeTotalError ? (
+                            <p className="text-xs text-[#C97B63] mt-2">{readingTimeTotalError}</p>
                         ) : null}
                     </div>
                 </div>
