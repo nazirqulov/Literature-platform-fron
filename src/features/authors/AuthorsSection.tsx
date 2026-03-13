@@ -7,6 +7,7 @@ import {
   resolveProfileUrl,
 } from "./authorUtils";
 import type { AuthorResponse } from "./authorUtils";
+import useAuthorProfileImages from "./useAuthorProfileImages";
 
 type AuthorsSectionProps = {
   limit?: number;
@@ -61,6 +62,15 @@ const AuthorsSection: React.FC<AuthorsSectionProps> = ({
     return copy;
   }, [authors]);
 
+  const authorIds = useMemo(
+    () =>
+      sortedAuthors
+        .map((author) => author.id)
+        .filter((id): id is number => typeof id === "number"),
+    [sortedAuthors],
+  );
+  const profilesById = useAuthorProfileImages(authorIds);
+
   const visibleAuthors = useMemo(() => {
     const base = sortedAuthors;
     return typeof limit === "number" ? base.slice(0, limit) : base;
@@ -108,6 +118,9 @@ const AuthorsSection: React.FC<AuthorsSectionProps> = ({
         <div className={listClassName}>
           {visibleAuthors.map((author, index) => {
             const profileUrl = resolveProfileUrl(author.profileImage ?? null);
+            const profileFromApi =
+              typeof author.id === "number" ? profilesById[author.id] : undefined;
+            const resolvedProfile = profileFromApi ?? profileUrl;
             const booksCount =
               typeof author.booksCount === "number" ? author.booksCount : null;
             const bookLabel =
@@ -125,9 +138,9 @@ const AuthorsSection: React.FC<AuthorsSectionProps> = ({
                 }`}
               >
                 <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[#E3DBCF] bg-[#F5F1E8] text-[#6B4F3A]">
-                  {profileUrl ? (
+                  {resolvedProfile ? (
                     <img
-                      src={profileUrl}
+                      src={resolvedProfile}
                       alt={author.name ?? "Muallif"}
                       className="h-full w-full object-cover"
                     />

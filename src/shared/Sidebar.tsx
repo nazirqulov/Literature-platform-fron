@@ -2,6 +2,7 @@ import React, { memo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { BookOpen, Users, UserPen, User, Tags, X } from "lucide-react";
 import { useAuth } from "../context/useAuth";
+import { isSuperAdminRole } from "./utils/roleUtils";
 
 type SidebarItemProps = {
   to: string;
@@ -42,8 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const { user } = useAuth();
   const location = useLocation();
 
-  const role = user?.role;
-  const isSuperAdmin = role === "SUPERADMIN" || role === "ROLE_SUPERADMIN";
+  const isSuperAdmin = isSuperAdminRole(user?.role);
 
   if (!user || !isSuperAdmin) {
     return null;

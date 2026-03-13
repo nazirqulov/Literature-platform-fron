@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { Plus, Trash2, Pencil, X } from "lucide-react";
 import api from "../../services/api";
+import { getAuthorInitials, resolveProfileUrl } from "../authors/authorUtils";
+import useAuthorProfileImages from "../authors/useAuthorProfileImages";
 
 const AdminAuthorsPage: React.FC = () => {
   const [authors, setAuthors] = useState<AuthorResponse[]>([]);
@@ -10,6 +12,7 @@ const AdminAuthorsPage: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingAuthor, setEditingAuthor] = useState<AuthorResponse | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [uploadingById, setUploadingById] = useState<Record<number, boolean>>({});
   const [newAuthor, setNewAuthor] = useState<AuthorFormState>({
     name: "",
     biography: "",
@@ -39,6 +42,12 @@ const AdminAuthorsPage: React.FC = () => {
   useEffect(() => {
     void fetchAuthors();
   }, [fetchAuthors]);
+
+  const authorIds = useMemo(
+    () => authors.map((author) => author.id).filter((id): id is number => !!id),
+    [authors],
+  );
+  const profilesById = useAuthorProfileImages(authorIds);
 
   const resetForm = () => {
     setNewAuthor({
@@ -146,6 +155,40 @@ const AdminAuthorsPage: React.FC = () => {
     }
   };
 
+  const uploadProfileImage = async (authorId: number, file?: File | null) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setUploadingById((prev) => ({ ...prev, [authorId]: true }));
+    try {
+      const { data } = await api.post<AuthorResponse>(
+        `/api/authors/upload-profile-image/${authorId}`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+      toast.success("Muallif rasmi yangilandi.");
+      if (data) {
+        setAuthors((prev) =>
+          prev.map((author) =>
+            author.id === authorId
+              ? { ...author, profileImage: data.profileImage ?? author.profileImage }
+              : author,
+          ),
+        );
+      }
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Rasm yuklashda xatolik yuz berdi.";
+      toast.error(message);
+    } finally {
+      setUploadingById((prev) => ({ ...prev, [authorId]: false }));
+    }
+  };
+
   const totalCount = useMemo(() => authors.length, [authors.length]);
 
   return (
@@ -183,6 +226,9 @@ const AdminAuthorsPage: React.FC = () => {
                   Ism
                 </th>
                 <th className="border-b border-r border-[#E3DBCF] px-4 py-4">
+                  Rasm
+                </th>
+                <th className="border-b border-r border-[#E3DBCF] px-4 py-4">
                   Millat
                 </th>
                 <th className="border-b border-r border-[#E3DBCF] px-4 py-4">
@@ -199,13 +245,13 @@ const AdminAuthorsPage: React.FC = () => {
             <tbody className="divide-y divide-[#E3DBCF]">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-[#6B6B6B]">
+                  <td colSpan={7} className="px-4 py-6 text-center text-[#6B6B6B]">
                     Yuklanmoqda...
                   </td>
                 </tr>
               ) : authors.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-[#6B6B6B]">
+                  <td colSpan={7} className="px-4 py-6 text-center text-[#6B6B6B]">
                     Muallif topilmadi.
                   </td>
                 </tr>
@@ -220,6 +266,50 @@ const AdminAuthorsPage: React.FC = () => {
                     </td>
                     <td className="border-r border-[#E3DBCF] px-4 py-4 text-[#2B2B2B]">
                       {author.name || "--"}
+                    </td>
+                    <td className="border-r border-[#E3DBCF] px-4 py-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#E3DBCF] bg-white text-xs font-semibold text-[#6B4F3A]">
+                          {author.id && profilesById[author.id] ? (
+                            <img
+                              src={profilesById[author.id] ?? ""}
+                              alt={author.name ?? "Muallif"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : resolveProfileUrl(author.profileImage ?? null) ? (
+                            <img
+                              src={resolveProfileUrl(author.profileImage ?? null) ?? ""}
+                              alt={author.name ?? "Muallif"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span>{getAuthorInitials(author.name)}</span>
+                          )}
+                        </div>
+                        {author.id ? (
+                          <>
+                            <label
+                              htmlFor={`author-image-${author.id}`}
+                              className="inline-flex cursor-pointer items-center rounded-md border border-[#E3DBCF] px-2 py-1 text-xs text-[#2B2B2B] transition hover:bg-white"
+                            >
+                              {uploadingById[author.id]
+                                ? "Yuklanmoqda..."
+                                : "Rasm yuklash"}
+                            </label>
+                            <input
+                              id={`author-image-${author.id}`}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                event.target.value = "";
+                                void uploadProfileImage(author.id as number, file);
+                              }}
+                            />
+                          </>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="border-r border-[#E3DBCF] px-4 py-4 text-[#2B2B2B]">
                       {author.nationality || "--"}
@@ -504,6 +594,7 @@ interface AuthorFormState {
 
 interface AuthorResponse extends AuthorRequest {
   id: number;
+  profileImage?: string;
 }
 
 interface AuthorListResponse {
