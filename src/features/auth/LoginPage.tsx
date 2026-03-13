@@ -110,9 +110,9 @@ const LoginPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    document.body.classList.add("recaptcha-login-page");
+    document.body.classList.add("recaptcha-auth-page");
     return () => {
-      document.body.classList.remove("recaptcha-login-page");
+      document.body.classList.remove("recaptcha-auth-page");
     };
   }, []);
 
