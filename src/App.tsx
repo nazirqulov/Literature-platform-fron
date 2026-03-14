@@ -32,6 +32,7 @@ import { useAuth } from './context/useAuth';
 import { isSuperAdminRole } from './shared/utils/roleUtils';
 import { useTheme } from './context/useTheme';
 import UserChatWidget from './features/chat/UserChatWidget';
+import BookRealtimeNotifications from './shared/components/BookRealtimeNotifications';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -124,6 +125,7 @@ const App: React.FC = () => {
         theme={theme === 'dark' ? 'dark' : 'light'}
       />
       <UserChatWidget />
+      <BookRealtimeNotifications />
     </>
   );
 };
