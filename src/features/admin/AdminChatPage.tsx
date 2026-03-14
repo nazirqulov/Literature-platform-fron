@@ -111,9 +111,7 @@ const AdminChatPage: React.FC = () => {
     [],
   );
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [messagesByUserId, setMessagesByUserId] = useState<
-    Record<number, UiChatMessage[]>
-  >({});
+  const [activeMessages, setActiveMessages] = useState<UiChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const sendLockRef = useRef(false);
   const lastSendRef = useRef<{ key: string; at: number } | null>(null);
@@ -140,6 +138,12 @@ const AdminChatPage: React.FC = () => {
 
   useEffect(() => {
     selectedUserRef.current = selectedUserId;
+  }, [selectedUserId]);
+
+  useEffect(() => {
+    if (!selectedUserId) {
+      setActiveMessages([]);
+    }
   }, [selectedUserId]);
 
   useEffect(() => {
@@ -235,13 +239,20 @@ const AdminChatPage: React.FC = () => {
             if (!otherUserId) return;
 
             const message: UiChatMessage = { ...normalized, mine };
-            setMessagesByUserId((prev) => {
-              const current = prev[otherUserId] ?? [];
-              return {
-                ...prev,
-                [otherUserId]: mergeMessages(current, [message]),
-              };
-            });
+            const selectedId = selectedUserRef.current;
+            const isActiveConversationMessage =
+              typeof selectedId === "number" &&
+              typeof myUserId === "number" &&
+              typeof normalized.senderUserId === "number" &&
+              typeof normalized.receiverUserId === "number" &&
+              ((normalized.senderUserId === selectedId &&
+                normalized.receiverUserId === myUserId) ||
+                (normalized.senderUserId === myUserId &&
+                  normalized.receiverUserId === selectedId));
+
+            if (isActiveConversationMessage) {
+              setActiveMessages((prev) => mergeMessages(prev, [message]));
+            }
 
             setConversations((prev) => {
               const existing = prev.find(
@@ -342,6 +353,7 @@ const AdminChatPage: React.FC = () => {
     if (!selectedUserId) return;
 
     let cancelled = false;
+    setActiveMessages([]);
 
     const loadHistory = async () => {
       setIsLoadingMessages(true);
@@ -364,13 +376,7 @@ const AdminChatPage: React.FC = () => {
           return { ...item, mine };
         });
 
-        setMessagesByUserId((prev) => ({
-          ...prev,
-          [selectedUserId]: mergeMessages(
-            prev[selectedUserId] ?? [],
-            normalizedHistory,
-          ),
-        }));
+        setActiveMessages(mergeMessages([], normalizedHistory));
 
         await markChatConversationRead(selectedUserId);
         if (cancelled) return;
@@ -405,10 +411,10 @@ const AdminChatPage: React.FC = () => {
     [conversations, selectedUserId],
   );
 
-  const selectedMessages = useMemo(() => {
-    if (!selectedUserId) return [];
-    return messagesByUserId[selectedUserId] ?? [];
-  }, [messagesByUserId, selectedUserId]);
+  const selectedMessages = useMemo(
+    () => activeMessages,
+    [activeMessages],
+  );
 
   const sendMessage = () => {
     console.log("[CHAT][ADMIN] SEND CALLED");

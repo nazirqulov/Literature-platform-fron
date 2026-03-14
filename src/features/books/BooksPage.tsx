@@ -3,6 +3,7 @@ import { BookOpen, Heart, Search, Star } from "lucide-react";
 import { toast } from "react-toastify";
 import api from "../../services/api";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { subscribeNewBookEvent } from "../../services/bookRealtimeBus";
 
 interface BookCategoryResponse {
   id?: number;
@@ -106,6 +107,17 @@ const BooksPage: React.FC = () => {
       void fetchBooks(searchTerm);
     }, 350);
     return () => clearTimeout(timer);
+  }, [fetchBooks, searchTerm]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeNewBookEvent((payload) => {
+      if (payload.type !== "NEW_BOOK") return;
+      void fetchBooks(searchTerm);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, [fetchBooks, searchTerm]);
 
   useEffect(() => {

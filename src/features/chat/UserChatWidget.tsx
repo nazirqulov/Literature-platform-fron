@@ -92,9 +92,7 @@ const UserChatWidget: React.FC = () => {
     [],
   );
   const [activeUserId, setActiveUserId] = useState<number | null>(null);
-  const [messagesByUserId, setMessagesByUserId] = useState<
-    Record<number, UiMessage[]>
-  >({});
+  const [activeMessages, setActiveMessages] = useState<UiMessage[]>([]);
   const sendLockRef = useRef(false);
   const lastSendRef = useRef<{ key: string; at: number } | null>(null);
   const sendUnlockTimerRef = useRef<number | null>(null);
@@ -120,6 +118,12 @@ const UserChatWidget: React.FC = () => {
 
   useEffect(() => {
     activeUserIdRef.current = activeUserId;
+  }, [activeUserId]);
+
+  useEffect(() => {
+    if (!activeUserId) {
+      setActiveMessages([]);
+    }
   }, [activeUserId]);
 
   const shouldRender = useMemo(() => {
@@ -226,13 +230,20 @@ const UserChatWidget: React.FC = () => {
             if (!otherUserId) return;
 
             const message: UiMessage = { ...normalized, mine };
-            setMessagesByUserId((prev) => {
-              const current = prev[otherUserId] ?? [];
-              return {
-                ...prev,
-                [otherUserId]: mergeMessages(current, [message]),
-              };
-            });
+            const selectedId = activeUserIdRef.current;
+            const isActiveConversationMessage =
+              typeof selectedId === "number" &&
+              typeof myUserId === "number" &&
+              typeof normalized.senderUserId === "number" &&
+              typeof normalized.receiverUserId === "number" &&
+              ((normalized.senderUserId === selectedId &&
+                normalized.receiverUserId === myUserId) ||
+                (normalized.senderUserId === myUserId &&
+                  normalized.receiverUserId === selectedId));
+
+            if (isActiveConversationMessage) {
+              setActiveMessages((prev) => mergeMessages(prev, [message]));
+            }
 
             setConversations((prev) => {
               const existing = prev.find(
@@ -317,6 +328,7 @@ const UserChatWidget: React.FC = () => {
     if (!shouldRender || !activeUserId) return;
 
     let cancelled = false;
+    setActiveMessages([]);
 
     const loadHistory = async () => {
       setIsLoading(true);
@@ -338,10 +350,7 @@ const UserChatWidget: React.FC = () => {
           return { ...item, mine };
         });
 
-        setMessagesByUserId((prev) => ({
-          ...prev,
-          [activeUserId]: mergeMessages(prev[activeUserId] ?? [], normalized),
-        }));
+        setActiveMessages(mergeMessages([], normalized));
 
         if (isOpen) {
           await markChatConversationRead(activeUserId);
@@ -397,9 +406,8 @@ const UserChatWidget: React.FC = () => {
   );
 
   const messages = useMemo(() => {
-    if (!activeUserId) return [];
-    return messagesByUserId[activeUserId] ?? [];
-  }, [messagesByUserId, activeUserId]);
+    return activeMessages;
+  }, [activeMessages]);
 
   const sendMessage = () => {
     console.log("[CHAT][USER] SEND CALLED");
