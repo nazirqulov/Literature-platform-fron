@@ -118,6 +118,17 @@ Backend:
 - GET `/api/reviews/book/{bookId}` - kitob bo'yicha reviewlar (page/size).
 - GET `/api/reviews/my-reviews` - foydalanuvchining reviewlari (page/size).
 
+## Chat API (REST + WebSocket)
+
+- GET `/api/chat/conversations` - joriy user uchun conversation list (last message, last time, unread count).
+- GET `/api/chat/conversation/{userId}` - joriy user va `{userId}` o'rtasidagi to'liq chat history (2 tomonlama).
+- POST `/api/chat/mark-read/{userId}` - tanlangan conversation xabarlarini o'qilgan deb belgilash.
+
+WebSocket:
+- Endpoint: `/ws` (SockJS, token query bilan).
+- Client send: `/app/chat.user-to-admin`, `/app/chat.admin-to-user`.
+- Client subscribe: `/user/queue/messages`, `/user/queue/conversations`.
+
 ## Admin upload API
 
 - POST `/api/books/{id}/cover`
