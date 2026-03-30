@@ -421,19 +421,6 @@
     background-color: var(--color-primary-hover);
   }
 
-  .grecaptcha-badge {
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-  }
-
-  body.recaptcha-login-page .grecaptcha-badge,
-  body.recaptcha-auth-page .grecaptcha-badge {
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    z-index: 50;
-  }
 }
 
 

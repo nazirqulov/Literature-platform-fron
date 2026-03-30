@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from "react";
+﻿import React, { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/useAuth";
 import { ChatSocketClient } from "../../services/chatSocket";
@@ -11,6 +12,7 @@ const BOOK_TOPIC_DESTINATION = "/topic/books";
 
 const BookRealtimeNotifications: React.FC = () => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const clientRef = useRef<ChatSocketClient | null>(null);
   const recentKeysRef = useRef<Map<string, number>>(new Map());
 
@@ -62,6 +64,7 @@ const BookRealtimeNotifications: React.FC = () => {
             const key = `${data.type}:${data.bookId ?? "n/a"}:${data.title ?? ""}`;
             if (isDuplicate(key)) return;
 
+                        const bookId = typeof data.bookId === "number" ? data.bookId : null;
             const toastText = data.message
               ? `${data.message}: ${data.title ?? ""}`
               : `Yangi kitob qo'shildi: ${data.title ?? ""}`;
@@ -69,8 +72,15 @@ const BookRealtimeNotifications: React.FC = () => {
               toastId: key,
               position: "top-center",
               autoClose: 4500,
+              closeOnClick: true,
               style: {
                 marginTop: "72px",
+                cursor: bookId != null ? "pointer" : "default",
+              },
+              onClick: () => {
+                if (bookId != null) {
+                  navigate(`/books/${bookId}`);
+                }
               },
             });
             emitNewBookEvent(data);
@@ -91,9 +101,11 @@ const BookRealtimeNotifications: React.FC = () => {
       client.disconnect();
       clientRef.current = null;
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, navigate]);
 
   return null;
 };
 
 export default BookRealtimeNotifications;
+
+

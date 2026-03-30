@@ -327,37 +327,6 @@ const LoginPage: React.FC = () => {
         </p>
       </div>
 
-      {isRecaptchaConfigured() ? (
-        <div className="fixed bottom-4 right-4 z-[60] overflow-hidden rounded-md border border-[#D7D7D7] bg-white shadow-lg">
-          <div className="flex items-stretch">
-            <div className="flex items-center justify-center bg-[#F1F3F4] px-3 text-[10px] font-semibold text-[#6B6B6B]">
-              reCAPTCHA
-            </div>
-            <div className="bg-[#1A73E8] px-3 py-2 text-[11px] leading-4 text-white">
-              <p className="font-semibold">protected by reCAPTCHA</p>
-              <div className="mt-1 flex gap-2">
-                <a
-                  href="https://policies.google.com/privacy"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline"
-                >
-                  Privacy
-                </a>
-                <span>-</span>
-                <a
-                  href="https://policies.google.com/terms"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline"
-                >
-                  Terms
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 };

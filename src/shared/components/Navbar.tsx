@@ -4,6 +4,7 @@ import { useAuth } from '../../context/useAuth';
 import { LogOut, User, Library, Moon, Sun, Menu, X } from 'lucide-react';
 import { useTheme } from '../../context/useTheme';
 import api from '../../services/api';
+import NotificationBell from './NotificationBell';
 
 interface CategoryChild {
     id?: number | null;
@@ -127,6 +128,9 @@ const Navbar: React.FC = () => {
                 )}
 
                 <div className="flex items-center gap-3">
+                    {isAuthenticated && !isAdminRoute && (
+                        <NotificationBell />
+                    )}
                     <div className="hidden items-center rounded-full border border-[#E3DBCF] bg-white p-1 text-xs sm:flex">
                         <button
                             onClick={() => setTheme('light')}
