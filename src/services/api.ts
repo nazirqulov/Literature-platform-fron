@@ -47,13 +47,27 @@ const clearStoredTokens = () => {
 const isAuthEndpoint = (url?: string) => {
   if (!url) return false;
 
-  return ["/api/login", "/api/register", "/api/verify-email", "/api/refresh-token"].some(
+  return [
+    "/api/login",
+    "/api/register",
+    "/api/verify-email",
+    "/api/forgot-password",
+    "/api/reset-password",
+    "/api/refresh-token",
+  ].some(
     (path) => url.includes(path),
   );
 };
 
 api.interceptors.request.use(
   (config) => {
+    if (isAuthEndpoint(config.url)) {
+      if (config.headers?.Authorization) {
+        delete config.headers.Authorization;
+      }
+      return config;
+    }
+
     const token = localStorage.getItem("accessToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

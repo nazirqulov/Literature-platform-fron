@@ -8,9 +8,11 @@ import React, {
 import api from "../services/api";
 import { isSuperAdminRole, normalizeRole } from "../shared/utils/roleUtils";
 import type {
+  ForgotPasswordRequest,
   LoginResponse,
   LoginRequest,
   RegisterRequest,
+  ResetPasswordRequest,
   UpdateProfileRequest,
   User,
   VerifyEmailRequest,
@@ -24,6 +26,8 @@ export interface AuthContextType {
   login: (data: LoginRequest) => Promise<User>;
   register: (data: RegisterRequest) => Promise<void>;
   verifyEmail: (data: VerifyEmailRequest) => Promise<void>;
+  forgotPassword: (data: ForgotPasswordRequest) => Promise<string>;
+  resetPassword: (data: ResetPasswordRequest) => Promise<string>;
   logout: () => void;
   updateProfile: (data: UpdateProfileRequest) => Promise<void>;
   updateProfileImage: (file: File) => Promise<void>;
@@ -37,6 +41,10 @@ const DEFAULT_AVATAR =
 interface ProfileImageMetaResponse {
   filename?: string | null;
   url?: string | null;
+}
+
+interface MessageResponse {
+  message?: string;
 }
 
 interface ResolvedImage {
@@ -229,6 +237,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     await api.post("/api/verify-email", data);
   };
 
+  const forgotPassword = async (data: ForgotPasswordRequest) => {
+    const response = await api.post<MessageResponse>("/api/forgot-password", data);
+    return response.data?.message ?? "Parolni tiklash bo'yicha ko'rsatma emailingizga yuborildi.";
+  };
+
+  const resetPassword = async (data: ResetPasswordRequest) => {
+    const response = await api.post<MessageResponse>("/api/reset-password", data);
+    return response.data?.message ?? "Parol muvaffaqiyatli yangilandi.";
+  };
+
   const updateProfile = async (data: UpdateProfileRequest) => {
     const { data: updatedUser } = await api.put<User>("/api/update-profile", data);
     setUser(updatedUser);
@@ -261,6 +279,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         login,
         register,
         verifyEmail,
+        forgotPassword,
+        resetPassword,
         logout,
         updateProfile,
         updateProfileImage,

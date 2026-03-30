@@ -49,6 +49,16 @@ export interface VerifyEmailRequest {
     code: string;
 }
 
+export interface ForgotPasswordRequest {
+    email: string;
+}
+
+export interface ResetPasswordRequest {
+    token: string;
+    currentPassword: string;
+    newPassword: string;
+}
+
 export interface LoginRequest {
     usernameOrEmail: string;
     password: string;
