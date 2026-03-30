@@ -28,6 +28,23 @@ type LoginFormData = {
 };
 
 const resolveLoginErrorMessage = (error: any): string => {
+  if (!error?.response) {
+    return "Serverga so'rov bormadi (CORS/network/backend manzilini tekshiring).";
+  }
+
+  const directMessage =
+    typeof error?.message === "string" ? error.message.trim() : "";
+  const directLower = directMessage.toLowerCase();
+  if (
+    directLower.includes("recaptcha") ||
+    directLower.includes("captcha") ||
+    directLower.includes("site key") ||
+    directLower.includes("execute funksiyasi") ||
+    directLower.includes("timeout")
+  ) {
+    return "reCAPTCHA yuklanmadi yoki token olinmadi. AdBlock/VPN ni tekshirib qayta urinib ko'ring.";
+  }
+
   const status = error?.response?.status as number | undefined;
   const data = error?.response?.data;
   const rawMessage =
@@ -45,11 +62,27 @@ const resolveLoginErrorMessage = (error: any): string => {
     lower.includes("no value present") ||
     lower.includes("ichki server xatosi");
 
-  if (status === 401 || status === 400) {
+  if (
+    lower.includes("recaptcha") ||
+    lower.includes("captcha") ||
+    lower.includes("missing recaptcha") ||
+    lower.includes("bot activity")
+  ) {
+    return "reCAPTCHA tekshiruvi o'tmadi. Iltimos qayta urinib ko'ring.";
+  }
+
+  if (status === 401) {
     return "Login yoki parol noto'g'ri";
   }
 
+  if (status === 400) {
+    return message || "So'rov yuborildi, lekin backend 400 xato qaytardi.";
+  }
+
   if (status === 403) {
+    if (lower.includes("recaptcha") || lower.includes("captcha")) {
+      return "reCAPTCHA token qabul qilinmadi. Qayta urinib ko'ring.";
+    }
     if (lower.includes("bot")) {
       return "Xavfsizlik tekshiruvi muvaffaqiyatsiz. Qayta urinib ko'ring.";
     }
@@ -68,7 +101,7 @@ const resolveLoginErrorMessage = (error: any): string => {
     return message;
   }
 
-  return "Login yoki parol noto'g'ri";
+  return "Kirishda xatolik yuz berdi. Qayta urinib ko'ring.";
 };
 
 const LoginPage: React.FC = () => {
@@ -76,6 +109,9 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isRecaptchaReady, setIsRecaptchaReady] = useState(false);
+  const [recaptchaLoadError, setRecaptchaLoadError] = useState<string | null>(
+    null,
+  );
 
   const {
     register,
@@ -94,10 +130,14 @@ const LoginPage: React.FC = () => {
         await initializeRecaptcha();
         if (!cancelled) {
           setIsRecaptchaReady(true);
+          setRecaptchaLoadError(null);
         }
       } catch {
         if (!cancelled) {
           setIsRecaptchaReady(false);
+          setRecaptchaLoadError(
+            "reCAPTCHA yuklanmadi. AdBlock/VPN ni tekshirib, sahifani yangilang.",
+          );
         }
       }
     };
@@ -119,11 +159,41 @@ const LoginPage: React.FC = () => {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      if (!isRecaptchaConfigured()) {
-        throw new Error("reCAPTCHA sozlanmagan. `VITE_RECAPTCHA_SITE_KEY` ni tekshiring.");
+      console.log("[LOGIN_SUBMIT] started");
+      let token = "";
+
+      if (isRecaptchaConfigured()) {
+        if (!isRecaptchaReady) {
+          try {
+            await initializeRecaptcha();
+            setIsRecaptchaReady(true);
+            setRecaptchaLoadError(null);
+          } catch (initError) {
+            console.error("[LOGIN_SUBMIT] reCAPTCHA init error:", initError);
+            throw initError;
+          }
+        }
+        try {
+          token = (await Promise.race([
+            getRecaptchaToken("login"),
+            new Promise<string>((_, reject) => {
+              window.setTimeout(
+                () => reject(new Error("reCAPTCHA timeout")),
+                5000,
+              );
+            }),
+          ])) as string;
+        } catch (recaptchaError) {
+          console.error("[LOGIN_SUBMIT] reCAPTCHA token olinmadi:", recaptchaError);
+          throw recaptchaError;
+        }
+      } else {
+        throw new Error("reCAPTCHA site key topilmadi.");
       }
 
-      const token = await getRecaptchaToken("login");
+      if (!token || !token.trim()) {
+        throw new Error("reCAPTCHA token bo'sh.");
+      }
       const payload: LoginRequest = {
         usernameOrEmail: data.usernameOrEmail,
         password: data.password,
@@ -131,6 +201,10 @@ const LoginPage: React.FC = () => {
         recaptchToken: token,
       };
 
+      console.log("[LOGIN_SUBMIT] sending /api/login request", {
+        usernameOrEmail: payload.usernameOrEmail,
+        hasRecaptcha: !!payload.recaptchaToken,
+      });
       const loggedInUser = await login(payload);
       toast.success("Xush kelibsiz!");
       const role = loggedInUser.role;
@@ -140,6 +214,7 @@ const LoginPage: React.FC = () => {
         navigate("/dashboard", { replace: true });
       }
     } catch (error: any) {
+      console.error("[LOGIN_SUBMIT] failed:", error);
       toast.error(resolveLoginErrorMessage(error));
     } finally {
       setIsLoading(false);
@@ -210,17 +285,18 @@ const LoginPage: React.FC = () => {
             />
             Eslab qolish
           </label>
-          <Link
-            to="/forgot-password"
+          <button
+            type="button"
+            onClick={() => navigate("/forgot-password")}
             className="text-[#6B4F3A] hover:underline"
           >
             Parolni unutdingizmi?
-          </Link>
+          </button>
         </div>
 
         <button
           type="submit"
-          disabled={isLoading || (isRecaptchaConfigured() && !isRecaptchaReady)}
+          disabled={isLoading}
           className="btn-primary w-full flex items-center justify-center gap-2"
         >
           {isLoading ? (
@@ -233,6 +309,9 @@ const LoginPage: React.FC = () => {
           <p className="text-xs text-[#9A9A9A]">
             Xavfsizlik tekshiruvi yuklanmoqda...
           </p>
+        ) : null}
+        {recaptchaLoadError ? (
+          <p className="text-xs text-[#C97B63]">{recaptchaLoadError}</p>
         ) : null}
       </form>
 
@@ -247,6 +326,38 @@ const LoginPage: React.FC = () => {
           </Link>
         </p>
       </div>
+
+      {isRecaptchaConfigured() ? (
+        <div className="fixed bottom-4 right-4 z-[60] overflow-hidden rounded-md border border-[#D7D7D7] bg-white shadow-lg">
+          <div className="flex items-stretch">
+            <div className="flex items-center justify-center bg-[#F1F3F4] px-3 text-[10px] font-semibold text-[#6B6B6B]">
+              reCAPTCHA
+            </div>
+            <div className="bg-[#1A73E8] px-3 py-2 text-[11px] leading-4 text-white">
+              <p className="font-semibold">protected by reCAPTCHA</p>
+              <div className="mt-1 flex gap-2">
+                <a
+                  href="https://policies.google.com/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  Privacy
+                </a>
+                <span>-</span>
+                <a
+                  href="https://policies.google.com/terms"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  Terms
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
