@@ -7,18 +7,12 @@ import { subscribeNewBookEvent } from "../../services/bookRealtimeBus";
 
 type NotificationItem = {
   id?: number;
+  bookId?: number;
   type?: string;
   title?: string;
+  name?: string;
+  author?: string;
   message?: string;
-};
-
-type BookSearchItem = {
-  id?: number;
-  title?: string;
-};
-
-type BookSearchResponse = {
-  content?: BookSearchItem[];
 };
 
 type NotificationPage = {
@@ -39,10 +33,68 @@ const DEFAULT_PAGE: NotificationPage = {
 
 const PAGE_SIZE = 10;
 
+const toBookIdNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
+const extractArrayFromPayload = (raw: unknown): unknown[] => {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== "object") return [];
+
+  const typed = raw as Record<string, unknown>;
+  const candidates = [
+    typed.content,
+    typed.data,
+    typed.result,
+    (typed.data as Record<string, unknown> | undefined)?.content,
+    (typed.result as Record<string, unknown> | undefined)?.content,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+  }
+
+  return [];
+};
+
+const normalizeNotification = (raw: unknown): NotificationItem => {
+  const typed = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const id = toBookIdNumber(typed.id);
+  const bookId =
+    toBookIdNumber(typed.bookId) ??
+    toBookIdNumber(typed.bookID) ??
+    toBookIdNumber(typed.book_id) ??
+    toBookIdNumber((typed.book as Record<string, unknown> | undefined)?.id) ??
+    id;
+
+  return {
+    id: id ?? undefined,
+    bookId: bookId ?? undefined,
+    type: typeof typed.type === "string" ? typed.type : undefined,
+    title: typeof typed.title === "string" ? typed.title : undefined,
+    name: typeof typed.name === "string" ? typed.name : undefined,
+    author: typeof typed.author === "string" ? typed.author : undefined,
+    message: typeof typed.message === "string" ? typed.message : undefined,
+  };
+};
+
 const normalizePage = (raw: unknown): NotificationPage => {
   if (Array.isArray(raw)) {
     return {
-      content: raw as NotificationItem[],
+      content: raw.map(normalizeNotification),
       number: 0,
       totalPages: 1,
       totalElements: raw.length,
@@ -50,8 +102,14 @@ const normalizePage = (raw: unknown): NotificationPage => {
     };
   }
 
-  const obj = raw as Partial<NotificationPage> | undefined;
-  const content = Array.isArray(obj?.content) ? obj.content : [];
+  const obj = (raw && typeof raw === "object"
+    ? (raw as Partial<NotificationPage>)
+    : undefined);
+
+  const content = Array.isArray(obj?.content)
+    ? obj.content.map(normalizeNotification)
+    : extractArrayFromPayload(raw).map(normalizeNotification);
+
   const number = typeof obj?.number === "number" ? obj.number : 0;
   const totalPages = typeof obj?.totalPages === "number" ? obj.totalPages : 1;
   const totalElements =
@@ -61,12 +119,56 @@ const normalizePage = (raw: unknown): NotificationPage => {
   return { content, number, totalPages, totalElements, last };
 };
 
-const resolveTitle = (item: NotificationItem) => item.title || item.message || "Bildirishnoma";
+const extractBookPayload = (data: unknown) => {
+  if (!data || typeof data !== "object") return null;
+  const typed = data as Record<string, unknown>;
+  const possible =
+    (typed.book as Record<string, unknown> | undefined) ??
+    (typed.data as Record<string, unknown> | undefined) ??
+    (!Array.isArray(typed.content)
+      ? (typed.content as Record<string, unknown> | undefined)
+      : undefined) ??
+    (data as Record<string, unknown>);
+
+  return possible ?? null;
+};
+
+const extractBookIdFromSearchPayload = (data: unknown, title: string): number | null => {
+  const rows = extractArrayFromPayload(data);
+  if (rows.length === 0) return null;
+
+  const normalizedTitle = title.trim().toLowerCase();
+
+  const normalizedRows = rows
+    .map((row) => (row && typeof row === "object" ? (row as Record<string, unknown>) : null))
+    .filter((row): row is Record<string, unknown> => Boolean(row));
+
+  const exact = normalizedRows.find((row) => {
+    const rowTitle = typeof row.title === "string" ? row.title.trim().toLowerCase() : "";
+    return rowTitle.length > 0 && rowTitle === normalizedTitle;
+  });
+
+  const startsWith = normalizedRows.find((row) => {
+    const rowTitle = typeof row.title === "string" ? row.title.trim().toLowerCase() : "";
+    return rowTitle.length > 0 && rowTitle.startsWith(normalizedTitle);
+  });
+
+  const fallback = exact ?? startsWith ?? normalizedRows[0];
+
+  return (
+    toBookIdNumber(fallback.bookId) ??
+    toBookIdNumber(fallback.bookID) ??
+    toBookIdNumber(fallback.book_id) ??
+    toBookIdNumber(fallback.id)
+  );
+};
+
+const resolveTitle = (item: NotificationItem) =>
+  item.title || item.name || item.message || "Bildirishnoma";
 
 const resolveMessage = (item: NotificationItem) => {
-  const fallback = item.message || "";
-  if (!item.title) return "";
-  return fallback;
+  if (!item.title && !item.name) return "";
+  return item.message || "";
 };
 
 const NotificationBell: React.FC = () => {
@@ -122,9 +224,12 @@ const NotificationBell: React.FC = () => {
   useEffect(() => {
     const unsubscribe = subscribeNewBookEvent((payload) => {
       if (payload.type !== "NEW_BOOK") return;
-      if (typeof payload.bookId === "number") {
-        setLatestBookId(payload.bookId);
+
+      const incomingBookId = toBookIdNumber(payload.id) ?? toBookIdNumber(payload.bookId);
+      if (incomingBookId != null) {
+        setLatestBookId(incomingBookId);
       }
+
       setShowRealtimeDot(true);
       void fetchPage("unread", 0);
     });
@@ -161,54 +266,70 @@ const NotificationBell: React.FC = () => {
     return `${from}-${to} / ${activePage.totalElements}`;
   }, [activePage.number, activePage.totalElements]);
 
-  const handleOpenLatestBook = () => {
-    if (!latestBookId) return;
-    setOpen(false);
-    setShowRealtimeDot(false);
-    navigate(`/books/${latestBookId}`);
-  };
-
-  const handleOpenNotification = async (item: NotificationItem) => {
-    const title = (item.title ?? "").trim();
-    if (!title) {
-      if (item.type === "NEW_BOOK" && latestBookId) {
+  const openBookDetail = useCallback(
+    async (bookId: number, silent = false) => {
+      try {
+        const { data } = await api.get(`/api/books/${bookId}`);
+        const book = extractBookPayload(data);
         setOpen(false);
-        navigate(`/books/${latestBookId}`);
-        return;
+        setShowRealtimeDot(false);
+        navigate(`/books/${bookId}`, { state: book ? { book } : undefined });
+        return true;
+      } catch {
+        if (!silent) {
+          toast.error("Kitob ma'lumotini yuklashda xatolik yuz berdi.");
+        }
+        return false;
       }
-      toast.info("Bu bildirishnoma uchun kitob topilmadi.");
-      return;
+    },
+    [navigate],
+  );
+
+  const resolveBookIdFromTitle = useCallback(async (title?: string): Promise<number | null> => {
+    const keyword = title?.trim();
+    if (!keyword) return null;
+
+    try {
+      const { data } = await api.get("/api/books/search", {
+        params: { keyword, page: 0, size: 20 },
+      });
+      const found = extractBookIdFromSearchPayload(data, keyword);
+      if (found != null) return found;
+    } catch {
+      // search endpoint ishlamasa pastdagi fallback ishlaydi
     }
 
     try {
-      const { data } = await api.get<BookSearchResponse>("/api/books/search", {
-        params: { keyword: title, page: 0, size: 20 },
+      const { data } = await api.get("/api/books/get-all", {
+        params: { page: 0, size: 50 },
       });
-      const list = Array.isArray(data?.content) ? data.content : [];
-      const exact = list.find(
-        (book) =>
-          typeof book.id === "number" &&
-          (book.title ?? "").trim().toLowerCase() === title.toLowerCase(),
-      );
-      const first = exact ?? list.find((book) => typeof book.id === "number");
-      const bookId = first?.id;
-
-      if (typeof bookId === "number") {
-        setOpen(false);
-        navigate(`/books/${bookId}`);
-        return;
-      }
-
-      if (item.type === "NEW_BOOK" && latestBookId) {
-        setOpen(false);
-        navigate(`/books/${latestBookId}`);
-        return;
-      }
-
-      toast.info("Bu bildirishnoma uchun kitob topilmadi.");
+      return extractBookIdFromSearchPayload(data, keyword);
     } catch {
-      toast.error("Kitobni ochishda xatolik yuz berdi.");
+      return null;
     }
+  }, []);
+
+  const handleOpenLatestBook = async () => {
+    if (!latestBookId) return;
+    await openBookDetail(latestBookId);
+  };
+
+  const handleOpenNotification = async (item: NotificationItem) => {
+    const targetBookId =
+      toBookIdNumber(item.bookId) ?? toBookIdNumber(item.id) ?? latestBookId;
+
+    if (typeof targetBookId === "number" && Number.isFinite(targetBookId)) {
+      const opened = await openBookDetail(targetBookId, true);
+      if (opened) return;
+    }
+
+    const fallbackBookId = await resolveBookIdFromTitle(item.title ?? item.name);
+    if (typeof fallbackBookId === "number" && Number.isFinite(fallbackBookId)) {
+      const opened = await openBookDetail(fallbackBookId, true);
+      if (opened) return;
+    }
+
+    toast.info("Bu bildirishnoma uchun kitob topilmadi.");
   };
 
   const changePage = (direction: "prev" | "next") => {
@@ -241,7 +362,7 @@ const NotificationBell: React.FC = () => {
             {latestBookId ? (
               <button
                 type="button"
-                onClick={handleOpenLatestBook}
+                onClick={() => void handleOpenLatestBook()}
                 className="rounded-lg border border-[#6B4F3A]/30 px-2 py-1 text-xs font-medium text-[#6B4F3A] hover:bg-[#6B4F3A]/10"
               >
                 So'nggi kitobni ochish

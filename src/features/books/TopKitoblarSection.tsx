@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import BookCard from "../../shared/components/ui/BookCard";
+import SectionHeader from "../../shared/components/ui/SectionHeader";
 
 interface BookResponse {
   id?: number;
@@ -183,37 +184,30 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
 
   const listClassName =
     layout === "grid"
-      ? "grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
-      : "flex gap-4 overflow-x-auto pb-2";
+      ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      : "no-scrollbar flex gap-4 overflow-x-auto pb-2";
 
   return (
     <div className="space-y-4">
       {showHeader ? (
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-[#2B2B2B]">
-            Eng ko'p o'qilganlar
-          </h2>
-          {showAllLink ? (
-            <Link
-              to="/books/top-kitoblar"
-              className="text-sm font-semibold text-[#6B4F3A] hover:text-[#5A4030]"
-            >
-              Barchasi
-            </Link>
-          ) : null}
-        </div>
+        <SectionHeader
+          title="Eng ko'p o'qilganlar"
+          subtitle="Platformadagi eng faol o'qilayotgan kitoblar"
+          actionLabel={showAllLink ? "Barchasi" : undefined}
+          actionTo={showAllLink ? "/books/top-kitoblar" : undefined}
+        />
       ) : null}
 
       {loading ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
           Yuklanmoqda...
         </div>
       ) : error ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#C97B63]">
+        <div className="dashboard-card text-sm text-[color:var(--c-danger)]">
           {error}
         </div>
       ) : visibleItems.length === 0 ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
           Hozircha kitob yo'q.
         </div>
       ) : (
@@ -235,61 +229,19 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
                 ? Math.max(0, Math.min(5, merged.averageRating))
                 : null;
             return (
-              <button
+              <BookCard
                 key={`${merged.id ?? "book"}-${index}`}
-                type="button"
-                onClick={() =>
-                  merged.id ? navigate(`/books/${merged.id}`) : undefined
+                onClick={() => (merged.id ? navigate(`/books/${merged.id}`) : undefined)}
+                title={merged.title ?? "Kitob nomi ko'rsatilmagan"}
+                author={merged.author?.name ?? "Muallif ko'rsatilmagan"}
+                coverUrl={coverUrl}
+                loadingCover={isCoverLoading}
+                rating={ratingValue}
+                ratingCount={
+                  typeof merged.ratingCount === "number" ? merged.ratingCount : undefined
                 }
-                className={`group relative overflow-hidden rounded-3xl border border-[#E3DBCF] bg-white text-left shadow-sm transition hover:border-[#6B4F3A]/40 hover:shadow-md ${
-                  layout === "grid" ? "w-full" : "w-64 shrink-0"
-                }`}
-              >
-                <div className="relative h-44 w-full overflow-hidden bg-[#F5F1E8]">
-                  {coverUrl ? (
-                    <img
-                      src={coverUrl}
-                      alt={merged.title ?? "Kitob"}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : isCoverLoading ? (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#9A9A9A]">
-                      Yuklanmoqda...
-                    </div>
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#9A9A9A]">
-                      Muqova mavjud emas
-                    </div>
-                  )}
-
-                  <div className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-2xl bg-white/90 text-[#6B4F3A] shadow">
-                    <BookOpen size={16} />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between px-4 pb-3 pt-2">
-                  <div className="min-w-0 space-y-1">
-                    <p className="truncate text-sm text-[#6B6B6B]">
-                      <span className="text-[#9A9A9A] font-semibold">Kitob:</span>{" "}
-                      <span className="text-[#2B2B2B] font-semibold">
-                        {merged.title ?? "Kitob nomi ko'rsatilmagan"}
-                      </span>
-                    </p>
-                    <p className="truncate text-sm text-[#6B6B6B]">
-                      <span className="text-[#9A9A9A] font-semibold">Muallif:</span>{" "}
-                      <span>
-                        {merged.author?.name ?? "Muallif ko'rsatilmagan"}
-                      </span>
-                    </p>
-                  </div>
-                  {ratingValue != null ? (
-                    <div className="ml-3 flex items-center gap-1 rounded-2xl bg-white px-2 py-1 text-xs font-semibold text-[#2B2B2B] shadow">
-                      <Star size={14} className="fill-[#C97B63] text-[#C97B63]" />
-                      {ratingValue.toFixed(1)}
-                    </div>
-                  ) : null}
-                </div>
-              </button>
+                className={layout === "grid" ? "w-full" : "w-[216px] shrink-0"}
+              />
             );
           })}
         </div>

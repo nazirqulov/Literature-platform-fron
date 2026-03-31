@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Heart, Search, Star } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "react-toastify";
 import api from "../../services/api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { subscribeNewBookEvent } from "../../services/bookRealtimeBus";
+import BookCard from "../../shared/components/ui/BookCard";
 
 interface BookCategoryResponse {
   id?: number;
@@ -23,6 +24,7 @@ interface BookResponse {
   subCategoryName?: string[] | null;
   language?: string | null;
   publishedYear?: number | null;
+  coverImage?: string | null;
   isFavorite?: boolean | null;
   favorite?: boolean | null;
   rating?: number | null;
@@ -37,6 +39,13 @@ interface BookResponse {
 
 type PagedResponse<T> = {
   content?: T[];
+};
+
+const resolveCoverUrl = (value?: string | null) => {
+  if (!value) return null;
+  if (value.startsWith("http")) return value;
+  const baseUrl = api.defaults.baseURL ?? "http://localhost:8080";
+  return new URL(value.replace(/^\/+/, ""), `${baseUrl}/`).toString();
 };
 
 const BooksPage: React.FC = () => {
@@ -221,155 +230,122 @@ const BooksPage: React.FC = () => {
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-4 py-10 space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="select-none text-2xl font-semibold text-[#2B2B2B] sm:text-3xl">
-          Kitoblar
-        </h1>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <div className="relative w-full sm:w-72">
-            <Search
-              size={18}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#6B4F3A]"
-            />
-            <input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Kitob nomi yoki kalit so'z bo'yicha qidirish..."
-              className="w-full rounded-lg border border-[#E3DBCF] bg-[#F5F1E8] py-2.5 pl-10 pr-3 text-sm font-semibold text-[#2B2B2B] placeholder:text-[#9A9A9A] focus:outline-none focus:ring-2 focus:ring-[#6B4F3A]/30"
-            />
+    <section className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:py-10">
+      <header
+        className="rounded-3xl border p-5 sm:p-6"
+        style={{
+          borderColor: "color-mix(in srgb, var(--c-border) 88%, transparent)",
+          backgroundColor:
+            "color-mix(in srgb, var(--c-surface-elevated) 96%, transparent)",
+          boxShadow: "var(--shadow-soft)",
+        }}
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--c-text-muted)]">
+              Raqamli kutubxona
+            </p>
+            <h1 className="text-2xl font-bold text-[color:var(--c-text-primary)] sm:text-3xl">
+              Kitoblar katalogi
+            </h1>
+            <p className="text-sm text-[color:var(--c-text-secondary)]">
+              Sifatli muqova ko'rinishi, aniq reyting va qulay qidiruv bilan.
+            </p>
           </div>
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm("")}
-              className="rounded-lg border border-[#E3DBCF] px-4 py-2 text-sm font-semibold text-[#6B6B6B] transition hover:bg-[#F5F1E8]"
-            >
-              Tozalash
-            </button>
-          )}
+
+          <div className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-xl">
+            <label className="relative flex-1">
+              <Search
+                size={18}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--c-text-muted)]"
+              />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Kitob nomi yoki kalit so'z bo'yicha qidirish..."
+                className="w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm text-[color:var(--c-text-primary)] placeholder:text-[color:var(--c-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--c-focus)]"
+                style={{
+                  borderColor: "color-mix(in srgb, var(--c-border) 88%, transparent)",
+                  backgroundColor: "color-mix(in srgb, var(--c-surface) 84%, transparent)",
+                }}
+              />
+            </label>
+
+            {searchTerm ? (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition"
+                style={{
+                  borderColor: "color-mix(in srgb, var(--c-border) 88%, transparent)",
+                  color: "var(--c-text-secondary)",
+                  backgroundColor:
+                    "color-mix(in srgb, var(--c-surface-elevated) 90%, transparent)",
+                }}
+              >
+                Tozalash
+              </button>
+            ) : null}
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <div className="space-y-4">
-          {loading ? (
-            <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
-              Yuklanmoqda...
-            </div>
-          ) : filteredBooks.length === 0 ? (
-            <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
-              Kitoblar topilmadi.
-            </div>
-          ) : (
-            <div className="grid gap-5 sm:grid-cols-3 lg:grid-cols-4">
-              {filteredBooks.map((book) => {
-                const isFav =
-                  (book.id != null
-                    ? favoriteById[book.id]
-                    : undefined) ??
-                  book.isFavorite ??
-                  book.favorite ??
-                  false;
-                return (
-                  <div
-                    key={book.id}
-                    className="group glass rounded-2xl border border-[#E3DBCF] p-4 transition hover:border-[#6B4F3A]/40"
-                  >
-                  <div className="relative h-48 w-full overflow-hidden rounded-xl border border-[#E3DBCF] bg-white">
-                    {book.id && bookCovers[book.id] ? (
-                      <img
-                        src={bookCovers[book.id] ?? ""}
-                        alt={book.title ?? "Muqova"}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : book.id && bookCovers[book.id] === null ? (
-                      <div className="flex h-full w-full items-center justify-center text-xs text-[#9A9A9A]">
-                        Rasm yo'q
-                      </div>
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs text-[#9A9A9A]">
-                        Yuklanmoqda...
-                      </div>
-                    )}
-                  </div>
+        {selectedSubcategory ? (
+          <div
+            className="mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold"
+            style={{
+              borderColor: "color-mix(in srgb, var(--c-accent) 32%, transparent)",
+              color: "var(--c-accent)",
+              backgroundColor: "color-mix(in srgb, var(--c-accent-soft) 58%, transparent)",
+            }}
+          >
+            <SlidersHorizontal size={13} />
+            Subkategoriya: {selectedSubcategory}
+          </div>
+        ) : null}
+      </header>
 
-                  <div className="mt-4 space-y-2">
-                    <h3 className="text-lg font-semibold text-[#2B2B2B]">
-                      Kitob nomi: {book.title ?? "--"}
-                    </h3>
-                    <p className="text-sm text-[#6B6B6B]">
-                      Muallifi: {book.author?.name ?? "Muallif ko'rsatilmagan"}
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-[#9A9A9A]">
-                      <BookOpen size={14} />
-                      <span>
-                        Til: {book.language ?? "--"} | Nashr yili:{" "}
-                        {book.publishedYear ?? "--"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-[#6B6B6B]">
-                      <Star
-                        size={14}
-                        className={
-                          resolveRatingValue(book)
-                            ? "fill-[#C97B63] text-[#C97B63]"
-                            : "text-[#C97B63]"
-                        }
-                      />
-                      <span>
-                        {resolveRatingValue(book) != null
-                          ? `${resolveRatingValue(book)?.toFixed(1)}`
-                          : "Reyting mavjud emas"}
-                        {resolveRatingCount(book) != null
-                          ? ` (${resolveRatingCount(book)})`
-                          : ""}
-                      </span>
-                    </div>
-                    {book.id && (
-                      <div className="flex items-center gap-3 pt-2">
-                        <button
-                          onClick={() => openDetails(book)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-[#E3DBCF] bg-white px-3 py-1.5 text-xs font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-70"
-                        >
-                          Kitobni ochish
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleFavorite(book.id as number)}
-                          disabled={favoriteLoading[book.id]}
-                          title={
-                            isFav
-                              ? "Sevimlilardan olib tashlash"
-                              : "Sevimlilarga qo'shish"
-                          }
-                          aria-label={
-                            isFav
-                              ? "Sevimlilardan olib tashlash"
-                              : "Sevimlilarga qo'shish"
-                          }
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3DBCF] bg-white text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-60"
-                        >
-                          <Heart
-                            size={16}
-                            className={
-                              isFav
-                                ? "fill-[#6B4F3A] text-[#6B4F3A]"
-                                : "text-[#6B4F3A]"
-                            }
-                          />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                );
-              })}
-            </div>
-          )}
-
+      {loading ? (
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
+          Kitoblar yuklanmoqda...
         </div>
-      </div>
+      ) : filteredBooks.length === 0 ? (
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
+          Kitoblar topilmadi.
+        </div>
+      ) : (
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(210px,1fr))] md:gap-5">
+          {filteredBooks.map((book) => {
+            const id = book.id;
+            const isFav =
+              (id != null ? favoriteById[id] : undefined) ??
+              book.isFavorite ??
+              book.favorite ??
+              false;
+            const coverFromApi = id != null ? bookCovers[id] : undefined;
+            const fallbackCover = resolveCoverUrl(book.coverImage);
+            const coverUrl = coverFromApi ?? fallbackCover;
+            const isCoverLoading = id != null && coverFromApi === undefined && !fallbackCover;
+            const rating = resolveRatingValue(book);
+            const ratingCount = resolveRatingCount(book);
 
+            return (
+              <BookCard
+                key={id ?? `${book.title}-${book.author?.name}`}
+                onClick={() => openDetails(book)}
+                title={book.title ?? "Kitob nomi ko'rsatilmagan"}
+                author={book.author?.name ?? "Muallif ko'rsatilmagan"}
+                coverUrl={coverUrl}
+                loadingCover={isCoverLoading}
+                rating={rating}
+                ratingCount={ratingCount ?? undefined}
+                isFavorite={Boolean(isFav)}
+                favoriteLoading={id ? favoriteLoading[id] : false}
+                onToggleFavorite={id ? () => toggleFavorite(id) : undefined}
+              />
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 };

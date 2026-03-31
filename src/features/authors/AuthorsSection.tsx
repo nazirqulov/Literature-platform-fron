@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import {
   getAuthorInitials,
@@ -8,6 +8,7 @@ import {
 } from "./authorUtils";
 import type { AuthorResponse } from "./authorUtils";
 import useAuthorProfileImages from "./useAuthorProfileImages";
+import SectionHeader from "../../shared/components/ui/SectionHeader";
 
 type AuthorsSectionProps = {
   limit?: number;
@@ -78,40 +79,30 @@ const AuthorsSection: React.FC<AuthorsSectionProps> = ({
 
   const listClassName =
     layout === "grid"
-      ? "grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
-      : "flex gap-4 overflow-x-auto pb-2";
+      ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      : "no-scrollbar flex gap-4 overflow-x-auto pb-2";
 
   return (
     <section className="space-y-4">
       {showHeader ? (
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-[#2B2B2B]">Mualliflar</h2>
-            <p className="text-sm text-[#6B6B6B]">
-              Mashhur yozuvchilar va adabiyot namoyandalari
-            </p>
-          </div>
-          {showAllLink ? (
-            <Link
-              to="/authors"
-              className="text-sm font-semibold text-[#6B4F3A] hover:text-[#5A4030]"
-            >
-              Barchasi
-            </Link>
-          ) : null}
-        </div>
+        <SectionHeader
+          title="Mualliflar"
+          subtitle="Mashhur yozuvchilar va adabiyot namoyandalari"
+          actionLabel={showAllLink ? "Barchasi" : undefined}
+          actionTo={showAllLink ? "/authors" : undefined}
+        />
       ) : null}
 
       {loading ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
           Yuklanmoqda...
         </div>
       ) : error ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#C97B63]">
+        <div className="dashboard-card text-sm text-[color:var(--c-danger)]">
           {error}
         </div>
       ) : visibleAuthors.length === 0 ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
           Mualliflar topilmadi.
         </div>
       ) : (
@@ -133,11 +124,16 @@ const AuthorsSection: React.FC<AuthorsSectionProps> = ({
                 onClick={() =>
                   author.id ? navigate(`/authors/${author.id}`) : undefined
                 }
-                className={`group glass rounded-2xl border border-[#E3DBCF] p-4 text-center transition hover:border-[#6B4F3A]/40 hover:shadow-md ${
-                  layout === "grid" ? "w-full" : "w-44 shrink-0"
+                className={`dashboard-card group p-4 text-center transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)] ${
+                  layout === "grid" ? "w-full" : "w-[170px] shrink-0"
                 }`}
               >
-                <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[#E3DBCF] bg-[#F5F1E8] text-[#6B4F3A]">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border text-[color:var(--c-accent)]"
+                  style={{
+                    borderColor: "color-mix(in srgb, var(--c-border) 86%, transparent)",
+                    backgroundColor: "color-mix(in srgb, var(--c-accent-soft) 45%, transparent)",
+                  }}
+                >
                   {resolvedProfile ? (
                     <img
                       src={resolvedProfile}
@@ -151,10 +147,10 @@ const AuthorsSection: React.FC<AuthorsSectionProps> = ({
                   )}
                 </div>
                 <div className="mt-3 space-y-1">
-                  <p className="truncate text-sm font-semibold text-[#2B2B2B]">
+                  <p className="truncate text-sm font-semibold text-[color:var(--c-text-primary)]">
                     {author.name ?? "Muallif nomi ko'rsatilmagan"}
                   </p>
-                  <p className="text-xs text-[#9A9A9A]">{bookLabel}</p>
+                  <p className="text-xs text-[color:var(--c-text-muted)]">{bookLabel}</p>
                 </div>
               </button>
             );

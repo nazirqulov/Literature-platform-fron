@@ -1,12 +1,11 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './shared/components/Navbar';
 import AuthLayout from './features/auth/AuthLayout';
 import RegisterPage from './features/auth/RegisterPage';
 import VerifyEmailPage from './features/auth/VerifyEmailPage';
 import LoginPage from './features/auth/LoginPage';
 import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
-import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import GuestDashboard from './features/dashboard/GuestDashboard';
 import UserDashboard from './features/dashboard/UserDashboard';
 import ProfilePage from './features/profile/ProfilePage';
@@ -42,11 +41,21 @@ const App: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const isSuperAdmin = isSuperAdminRole(user?.role);
   const { theme } = useTheme();
+  const location = useLocation();
+
+  useEffect(() => {
+    const showRecaptchaBadge =
+      location.pathname === '/login' || location.pathname === '/register';
+    document.body.classList.toggle('recaptcha-auth-page', showRecaptchaBadge);
+  }, [location.pathname]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F1E8]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6B4F3A]"></div>
+      <div className="flex min-h-screen items-center justify-center bg-[color:var(--c-bg)]">
+        <div
+          className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2"
+          style={{ borderColor: "var(--c-accent)" }}
+        />
       </div>
     );
   }
@@ -83,10 +92,6 @@ const App: React.FC = () => {
             <Route
               path="/forgot-password"
               element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />}
-            />
-            <Route
-              path="/reset-password"
-              element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ResetPasswordPage />}
             />
           </Route>
 

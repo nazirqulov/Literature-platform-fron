@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, Headphones, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { toast } from "react-toastify";
 import api from "../../services/api";
 import { useAuth } from "../../context/useAuth";
+import BookDetailHero from "../../shared/components/ui/BookDetailHero";
 
 interface BookCategoryResponse {
   id?: number;
@@ -27,6 +28,7 @@ interface BookDetail {
   publishedYear?: number | null;
   publisher?: string | null;
   coverImage?: string | null;
+  audioFile?: string | null;
   rating?: number | null;
   averageRating?: number | null;
   avgRating?: number | null;
@@ -155,6 +157,7 @@ const BookDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(!initialBook);
   const [error, setError] = useState<string | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverLoading, setCoverLoading] = useState(false);
   const coverObjectUrlRef = useRef<string | null>(null);
 
   const [ratingValue, setRatingValue] = useState(0);
@@ -252,8 +255,10 @@ const BookDetailPage: React.FC = () => {
   useEffect(() => {
     if (!bookIdNumber) return;
     let cancelled = false;
+    const fallbackCover = () => setCoverUrl(resolveCoverUrl(book?.coverImage));
 
     const fetchCover = async () => {
+      setCoverLoading(true);
       try {
         const response = await api.get<Blob>(
           `/api/books/book-image/${bookIdNumber}`,
@@ -261,7 +266,7 @@ const BookDetailPage: React.FC = () => {
         );
         if (cancelled) return;
         if (!response.data || response.data.size === 0) {
-          setCoverUrl(resolveCoverUrl(book?.coverImage));
+          fallbackCover();
           return;
         }
 
@@ -273,7 +278,11 @@ const BookDetailPage: React.FC = () => {
         setCoverUrl(objectUrl);
       } catch {
         if (!cancelled) {
-          setCoverUrl(resolveCoverUrl(book?.coverImage));
+          fallbackCover();
+        }
+      } finally {
+        if (!cancelled) {
+          setCoverLoading(false);
         }
       }
     };
@@ -296,6 +305,46 @@ const BookDetailPage: React.FC = () => {
 
   const ratingAverage = resolveRatingValue(book);
   const ratingCount = resolveRatingCount(book);
+  const hasAudio = typeof book?.audioFile === "string" && book.audioFile.trim().length > 0;
+  const categoryNames = useMemo(
+    () =>
+      (book?.categories ?? [])
+        .map((category) => category?.name?.trim())
+        .filter((name): name is string => Boolean(name)),
+    [book?.categories],
+  );
+  const subCategoryNames = useMemo(
+    () =>
+      (book?.subCategoryName ?? [])
+        .map((subCategory) => subCategory?.trim())
+        .filter((name): name is string => Boolean(name)),
+    [book?.subCategoryName],
+  );
+  const bookMetaItems = useMemo(
+    () => [
+      {
+        label: "Til",
+        value: book?.language ?? "--",
+        hint: "Kitob yozilgan til",
+      },
+      {
+        label: "Nashr yili",
+        value: book?.publishedYear ?? "--",
+        hint: "Kitob chop etilgan yil",
+      },
+      {
+        label: "Nashriyot",
+        value: book?.publisher ?? "--",
+        hint: "Kitobni nashr qilgan tashkilot",
+      },
+      {
+        label: "ISBN",
+        value: book?.isbn ?? "--",
+        hint: "Kitobning xalqaro identifikator kodi",
+      },
+    ],
+    [book?.isbn, book?.language, book?.publishedYear, book?.publisher],
+  );
 
   const submitRating = useCallback(async () => {
     if (!bookIdNumber || ratingLoading || ratingValue <= 0) return;
@@ -457,8 +506,8 @@ const BookDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <section className="max-w-6xl mx-auto px-4 py-10">
-        <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
+      <section className="mx-auto max-w-6xl px-4 py-10">
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
           Yuklanmoqda...
         </div>
       </section>
@@ -467,8 +516,8 @@ const BookDetailPage: React.FC = () => {
 
   if (error || !bookIdNumber) {
     return (
-      <section className="max-w-6xl mx-auto px-4 py-10">
-        <div className="glass rounded-2xl p-6 text-sm text-[#C97B63]">
+      <section className="mx-auto max-w-6xl px-4 py-10">
+        <div className="dashboard-card text-sm text-[color:var(--c-danger)]">
           {error ?? "Kitob topilmadi."}
         </div>
       </section>
@@ -476,121 +525,40 @@ const BookDetailPage: React.FC = () => {
   }
 
   return (
-    <section className="max-w-6xl mx-auto px-4 py-10 space-y-8">
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-2 text-sm font-semibold text-[#6B4F3A] hover:text-[#5A4030]"
-      >
-        <ArrowLeft size={16} />
-        Orqaga
-      </button>
-
-      <div className="grid gap-6 lg:grid-cols-[280px,1fr]">
-        <div className="glass rounded-3xl border border-[#E3DBCF] p-4">
-          <div className="h-80 w-full overflow-hidden rounded-2xl border border-[#E3DBCF] bg-white">
-            {coverUrl ? (
-              <img
-                src={coverUrl}
-                alt={book?.title ?? "Muqova"}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#F5F1E8] via-white to-[#EFE7DB] text-[#9A9A9A]">
-                <BookOpen size={36} />
-                <span className="text-xs font-semibold uppercase tracking-widest">
-                  Muqova mavjud emas
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="mt-4 space-y-2 text-sm text-[#6B6B6B]">
-            <div className="flex items-center gap-2">
-              <Star
-                size={16}
-                className={
-                  ratingAverage != null
-                    ? "fill-[#C97B63] text-[#C97B63]"
-                    : "text-[#C97B63]"
-                }
-              />
-              <span>
-                {ratingAverage != null
-                  ? `${ratingAverage.toFixed(1)}`
-                  : "Reyting mavjud emas"}
-                {ratingCount != null ? ` (${ratingCount})` : ""}
-              </span>
-            </div>
-            <div>
-              Til: <span className="text-[#2B2B2B]">{book?.language ?? "--"}</span>
-            </div>
-            <div>
-              Nashr yili:{" "}
-              <span className="text-[#2B2B2B]">{book?.publishedYear ?? "--"}</span>
-            </div>
-            <div>
-              Nashriyot:{" "}
-              <span className="text-[#2B2B2B]">{book?.publisher ?? "--"}</span>
-            </div>
-            <div>
-              ISBN: <span className="text-[#2B2B2B]">{book?.isbn ?? "--"}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-[#2B2B2B]">
-              {book?.title ?? "Kitob nomi ko'rsatilmagan"}
-            </h1>
-            <p className="text-sm text-[#6B6B6B]">
-              Muallif:{" "}
-              <span className="text-[#2B2B2B]">
-                {book?.author?.name ?? "Muallif ko'rsatilmagan"}
-              </span>
-            </p>
-          </div>
-
-          <div className="glass rounded-2xl border border-[#E3DBCF] p-4">
-            <p className="text-sm font-bold uppercase tracking-widest text-[#2B2B2B]">
-              Kitob haqida
-            </p>
-            <p className="mt-2 text-sm text-[#6B6B6B]">
-              {book?.description?.trim()
-                ? book.description
-                : "Kitob tavsifi mavjud emas."}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => navigate(`/books/${bookIdNumber}/read`)}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#6B4F3A] px-4 py-2 text-sm font-semibold text-[#F5F1E8] transition hover:bg-[#5A4030]"
-            >
-              <BookOpen size={16} />
-              Kitobni ochish
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(`/books/${bookIdNumber}/audio`)}
-              className="inline-flex items-center gap-2 rounded-lg border border-[#E3DBCF] bg-white px-4 py-2 text-sm font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8]"
-            >
-              <Headphones size={16} />
-              Audioni ochish
-            </button>
-          </div>
-        </div>
-      </div>
+    <section className="mx-auto max-w-6xl space-y-6 px-4 py-10">
+      <BookDetailHero
+        title={book?.title ?? "Kitob nomi ko'rsatilmagan"}
+        author={book?.author?.name ?? "Muallif ko'rsatilmagan"}
+        coverUrl={coverUrl}
+        loadingCover={coverLoading}
+        description={book?.description}
+        categories={categoryNames}
+        subCategories={subCategoryNames}
+        rating={ratingAverage}
+        ratingCount={ratingCount}
+        hasAudio={hasAudio}
+        metaItems={bookMetaItems}
+        onBack={() => navigate(-1)}
+        onRead={() => navigate(`/books/${bookIdNumber}/read`)}
+        onOpenAudio={hasAudio ? () => navigate(`/books/${bookIdNumber}/audio`) : undefined}
+      />
 
       <div className="grid gap-4 lg:grid-cols-[1fr,1.2fr]">
-        <div className="glass rounded-2xl border border-[#E3DBCF] p-5">
+        <div
+          className="rounded-2xl border p-5"
+          style={{
+            borderColor: "color-mix(in srgb, var(--c-border) 88%, transparent)",
+            backgroundColor:
+              "color-mix(in srgb, var(--c-surface-elevated) 95%, transparent)",
+            boxShadow: "var(--shadow-soft)",
+          }}
+        >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#2B2B2B]">
+              <p className="text-sm font-semibold text-[color:var(--c-text-primary)]">
                 Reyting berish
               </p>
-              <p className="text-xs text-[#6B6B6B]">
+              <p className="text-xs text-[color:var(--c-text-secondary)]">
                 Kitobga yulduzli baho bering.
               </p>
             </div>
@@ -600,15 +568,15 @@ const BookDetailPage: React.FC = () => {
                   key={value}
                   type="button"
                   onClick={() => setRatingValue(value)}
-                  className="rounded-full p-1 transition hover:bg-[#F5F1E8]"
+                  className="rounded-full p-1 transition hover:bg-[color:color-mix(in_srgb,var(--c-accent-soft)_56%,transparent)]"
                   aria-label={`${value} yulduz`}
                 >
                   <Star
                     size={18}
                     className={
                       ratingValue >= value
-                        ? "fill-[#C97B63] text-[#C97B63]"
-                        : "text-[#C97B63]"
+                        ? "fill-[var(--c-warning)] text-[var(--c-warning)]"
+                        : "text-[var(--c-warning)]"
                     }
                   />
                 </button>
@@ -621,20 +589,28 @@ const BookDetailPage: React.FC = () => {
               type="button"
               onClick={submitRating}
               disabled={ratingLoading || ratingValue <= 0}
-              className="inline-flex items-center justify-center rounded-lg bg-[#6B4F3A] px-4 py-2 text-sm font-semibold text-[#F5F1E8] transition hover:bg-[#5A4030] disabled:opacity-60"
+              className="btn-primary disabled:opacity-60"
             >
               {ratingLoading ? "Saqlanmoqda..." : "Reytingni saqlash"}
             </button>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#E3DBCF] bg-white/90 p-6 text-[#2B2B2B] shadow-[0_20px_60px_rgba(0,0,0,0.12)] space-y-6 dark:border-white/10 dark:bg-[#1C2026] dark:text-[#F5F1E8] dark:shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+        <div
+          className="space-y-6 rounded-2xl border p-6"
+          style={{
+            borderColor: "color-mix(in srgb, var(--c-border) 88%, transparent)",
+            backgroundColor:
+              "color-mix(in srgb, var(--c-surface-elevated) 96%, transparent)",
+            boxShadow: "var(--shadow-soft)",
+          }}
+        >
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-semibold tracking-wide text-[#2B2B2B] dark:text-[#F5F1E8]">
+            <p className="text-sm font-semibold tracking-wide text-[color:var(--c-text-primary)]">
               Fikr yozish
             </p>
-            <p className="text-xs text-[#6B6B6B] dark:text-[#A7ADB6]">
-              Haqoratli yoki nomaqbul mazmundagi izohlar ko‘rsatilmaydi.
+            <p className="text-xs text-[color:var(--c-text-secondary)]">
+              Haqoratli yoki nomaqbul mazmundagi izohlar ko'rsatilmaydi.
             </p>
           </div>
 
@@ -643,7 +619,12 @@ const BookDetailPage: React.FC = () => {
               value={reviewText}
               onChange={(event) => setReviewText(event.target.value)}
               placeholder="Kitob haqida fikringizni yozing..."
-              className="min-h-[120px] w-full rounded-xl border border-[#E3DBCF] bg-white px-4 py-3 text-sm text-[#2B2B2B] placeholder:text-[#9A9A9A] focus:outline-none focus:ring-2 focus:ring-[#C9A27A]/35 dark:border-white/10 dark:bg-[#14181E] dark:text-[#F5F1E8] dark:placeholder:text-[#7E848F] dark:focus:ring-[#C9A27A]/40"
+              className="min-h-[120px] w-full rounded-xl border px-4 py-3 text-sm text-[color:var(--c-text-primary)] placeholder:text-[color:var(--c-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--c-focus)]"
+              style={{
+                borderColor: "color-mix(in srgb, var(--c-border) 88%, transparent)",
+                backgroundColor:
+                  "color-mix(in srgb, var(--c-surface) 84%, transparent)",
+              }}
               disabled={reviewSubmitting}
             />
 
@@ -651,8 +632,8 @@ const BookDetailPage: React.FC = () => {
               <p
                 className={`text-xs ${
                   reviewStatus === "error"
-                    ? "text-[#C97B63] dark:text-[#F28B82]"
-                    : "text-[#6B6B6B] dark:text-[#A7ADB6]"
+                    ? "text-[color:var(--c-danger)]"
+                    : "text-[color:var(--c-text-secondary)]"
                 }`}
               >
                 {reviewMessage}
@@ -660,7 +641,7 @@ const BookDetailPage: React.FC = () => {
             ) : null}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-[#9A9A9A] dark:text-[#8D94A1]">
+              <span className="text-xs text-[color:var(--c-text-muted)]">
                 {reviewSubmitting
                   ? "Tekshirilmoqda..."
                   : "Izohlar tekshirilib saqlanadi."}
@@ -669,24 +650,27 @@ const BookDetailPage: React.FC = () => {
                 type="button"
                 onClick={submitReviewText}
                 disabled={reviewSubmitting || reviewText.trim().length === 0}
-                className="inline-flex items-center justify-center rounded-lg bg-[#6B4F3A] px-4 py-2 text-sm font-semibold text-[#F5F1E8] transition hover:bg-[#5A4030] disabled:opacity-60 dark:bg-[#C9A27A] dark:text-[#1B1F24] dark:hover:bg-[#B8926E]"
+                className="btn-primary disabled:opacity-60"
               >
                 {reviewSubmitting ? "Tekshirilmoqda..." : "Fikrni yuborish"}
               </button>
             </div>
           </div>
 
-          <div className="space-y-4 border-t border-[#E3DBCF] pt-4 dark:border-white/10">
+          <div
+            className="space-y-4 border-t pt-4"
+            style={{ borderColor: "color-mix(in srgb, var(--c-border) 84%, transparent)" }}
+          >
             {reviewsLoading ? (
-              <div className="text-sm text-[#6B6B6B] dark:text-[#A7ADB6]">
+              <div className="text-sm text-[color:var(--c-text-secondary)]">
                 Yuklanmoqda...
               </div>
             ) : reviewsError ? (
-              <div className="text-sm text-[#C97B63] dark:text-[#F28B82]">
+              <div className="text-sm text-[color:var(--c-danger)]">
                 {reviewsError}
               </div>
             ) : reviews.length === 0 ? (
-              <div className="text-sm text-[#6B6B6B] dark:text-[#A7ADB6]">
+              <div className="text-sm text-[color:var(--c-text-secondary)]">
                 Hozircha reviewlar mavjud emas.
               </div>
             ) : (
@@ -702,32 +686,32 @@ const BookDetailPage: React.FC = () => {
                       key={review.id ?? `${review.bookId}-${review.comment}`}
                       className={`rounded-xl border px-4 py-3 ${
                         mine
-                          ? "border-[#C9A27A]/50 bg-[#F5F1E8] dark:bg-[#222831]"
-                          : "border-[#E3DBCF] bg-white dark:border-white/10 dark:bg-[#171B21]"
+                          ? "border-[color:color-mix(in_srgb,var(--c-accent)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--c-accent-soft)_45%,var(--c-surface))]"
+                          : "border-[color:color-mix(in_srgb,var(--c-border)_84%,transparent)] bg-[color:color-mix(in_srgb,var(--c-surface)_78%,transparent)]"
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         <div
                           className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${
                             mine
-                              ? "bg-[#6B4F3A] text-[#F5F1E8] dark:bg-[#C9A27A] dark:text-[#1B1F24]"
-                              : "bg-[#F5F1E8] text-[#6B4F3A] dark:bg-[#2A3038] dark:text-[#C9A27A]"
+                              ? "bg-[color:var(--c-accent)] text-white"
+                              : "bg-[color:color-mix(in_srgb,var(--c-accent-soft)_52%,var(--c-surface))] text-[color:var(--c-accent)]"
                           }`}
                         >
                           {getUserInitials(review.user)}
                         </div>
                           <div className="flex-1 space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-sm font-semibold text-[#2B2B2B] dark:text-[#F5F1E8]">
+                              <span className="text-sm font-semibold text-[color:var(--c-text-primary)]">
                                 {resolveReviewUserName(review.user)}
                               </span>
                               {mine ? (
-                                <span className="rounded-full border border-[#6B4F3A]/40 px-2 py-0.5 text-[10px] font-semibold text-[#6B4F3A] dark:border-[#C9A27A]/40 dark:text-[#C9A27A]">
+                                <span className="rounded-full border border-[color:color-mix(in_srgb,var(--c-accent)_42%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--c-accent)]">
                                   You
                                 </span>
                               ) : null}
                             </div>
-                            <p className="text-sm text-[#6B6B6B] dark:text-[#C7CBD3]">
+                            <p className="text-sm text-[color:var(--c-text-secondary)]">
                               {review.comment ?? "Fikr ko'rsatilmagan."}
                             </p>
                           </div>
@@ -744,7 +728,13 @@ const BookDetailPage: React.FC = () => {
                   type="button"
                   onClick={() => loadReviews(reviewsPage + 1, true)}
                   disabled={reviewsLoadingMore}
-                  className="rounded-full border border-[#E3DBCF] px-6 py-2 text-sm font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-60 dark:border-white/10 dark:text-[#C9A27A] dark:hover:bg-white/5"
+                  className="rounded-full border px-6 py-2 text-sm font-semibold transition disabled:opacity-60"
+                  style={{
+                    borderColor: "color-mix(in srgb, var(--c-border) 86%, transparent)",
+                    color: "var(--c-accent)",
+                    backgroundColor:
+                      "color-mix(in srgb, var(--c-surface) 75%, transparent)",
+                  }}
                 >
                   {reviewsLoadingMore ? "Yuklanmoqda..." : "Ko'proq ko'rish"}
                 </button>
@@ -756,7 +746,13 @@ const BookDetailPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAllReviews((prev) => !prev)}
-                  className="rounded-full border border-[#E3DBCF] px-5 py-2 text-xs font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] dark:border-white/10 dark:text-[#C9A27A] dark:hover:bg-white/5"
+                  className="rounded-full border px-5 py-2 text-xs font-semibold transition"
+                  style={{
+                    borderColor: "color-mix(in srgb, var(--c-border) 86%, transparent)",
+                    color: "var(--c-accent)",
+                    backgroundColor:
+                      "color-mix(in srgb, var(--c-surface) 75%, transparent)",
+                  }}
                 >
                   {showAllReviews ? "Yopish" : "Barchasini ko'rish"}
                 </button>
@@ -770,3 +766,4 @@ const BookDetailPage: React.FC = () => {
 };
 
 export default BookDetailPage;
+
