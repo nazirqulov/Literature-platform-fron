@@ -1,366 +1,327 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/useAuth';
-import api from '../../services/api';
-import { BookOpen, Clock, Award } from 'lucide-react';
-import SizUchunSection from '../books/SizUchunSection';
-import TopKitoblarSection from '../books/TopKitoblarSection';
-import NewBooksSection from '../books/NewBooksSection';
-import AuthorsSection from '../authors/AuthorsSection';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Award, BookOpen, Clock } from "lucide-react";
+import { useAuth } from "../../context/useAuth";
+import api from "../../services/api";
+import AuthorsSection from "../authors/AuthorsSection";
+import NewBooksSection from "../books/NewBooksSection";
+import SizUchunSection from "../books/SizUchunSection";
+import TopKitoblarSection from "../books/TopKitoblarSection";
+import BadgeChip from "../../shared/components/ui/BadgeChip";
+import HeroSection from "../../shared/components/ui/HeroSection";
+import StatCard from "../../shared/components/ui/StatCard";
 
 const parseReadingTimeMinutes = (data: unknown): number => {
-    if (typeof data === 'number' && Number.isFinite(data)) {
-        return data;
+  if (typeof data === "number" && Number.isFinite(data)) return data;
+  if (typeof data === "string") {
+    const trimmed = data.trim();
+    const match = trimmed.match(/^(\d+(?:[.,]\d+)?)/);
+    if (match) {
+      const parsed = Number(match[1].replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : 0;
     }
-
-    if (typeof data === 'string') {
-        const trimmed = data.trim();
-        const match = trimmed.match(/^(\d+(?:[.,]\d+)?)/);
-        if (match) {
-            const parsed = Number(match[1].replace(',', '.'));
-            return Number.isFinite(parsed) ? parsed : 0;
-        }
-    }
-
-    return 0;
+  }
+  return 0;
 };
 
 const formatReadingTime = (minutes: number): { value: string; unit: string } => {
-    const safeMinutes = Number.isFinite(minutes) ? minutes : 0;
-    if (safeMinutes < 60) {
-        const value = safeMinutes % 1 === 0 ? safeMinutes.toString() : safeMinutes.toFixed(1);
-        return { value, unit: 'min' };
-    }
-
-    const hours = safeMinutes / 60;
-    const value = hours % 1 === 0 ? hours.toString() : hours.toFixed(1);
-    return { value, unit: 'soat' };
+  if (!Number.isFinite(minutes) || minutes < 0) return { value: "0", unit: "min" };
+  if (minutes < 60) {
+    return {
+      value: minutes % 1 === 0 ? minutes.toString() : minutes.toFixed(1),
+      unit: "min",
+    };
+  }
+  const hours = minutes / 60;
+  return {
+    value: hours % 1 === 0 ? hours.toString() : hours.toFixed(1),
+    unit: "soat",
+  };
 };
 
 const UserDashboard: React.FC = () => {
-    const { user } = useAuth();
-    const navigate = useNavigate();
-    const [completedCount, setCompletedCount] = useState<number | null>(null);
-    const [isCompletedCountLoading, setIsCompletedCountLoading] = useState(false);
-    const [completedCountError, setCompletedCountError] = useState<string | null>(null);
-    const [readingTimeMinutes, setReadingTimeMinutes] = useState<number | null>(null);
-    const [isReadingTimeLoading, setIsReadingTimeLoading] = useState(false);
-    const [readingTimeError, setReadingTimeError] = useState<string | null>(null);
-    const [readingTimeTotalMinutes, setReadingTimeTotalMinutes] = useState<number | null>(null);
-    const [isReadingTimeTotalLoading, setIsReadingTimeTotalLoading] = useState(false);
-    const [readingTimeTotalError, setReadingTimeTotalError] = useState<string | null>(null);
-    const [readingTimeTodayMinutes, setReadingTimeTodayMinutes] = useState<number | null>(null);
-    const [isReadingTimeTodayLoading, setIsReadingTimeTodayLoading] = useState(false);
-    const [readingTimeTodayError, setReadingTimeTodayError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-    useEffect(() => {
-        let isActive = true;
+  const [completedCount, setCompletedCount] = useState<number | null>(null);
+  const [isCompletedCountLoading, setIsCompletedCountLoading] = useState(false);
+  const [completedCountError, setCompletedCountError] = useState<string | null>(null);
 
-        const fetchCompletedCount = async () => {
-            setIsCompletedCountLoading(true);
-            setCompletedCountError(null);
-            try {
-                const { data } = await api.get<number>('/api/me/books/completed-count');
-                if (!isActive) return;
+  const [readingTimeMinutes, setReadingTimeMinutes] = useState<number | null>(null);
+  const [isReadingTimeLoading, setIsReadingTimeLoading] = useState(false);
+  const [readingTimeError, setReadingTimeError] = useState<string | null>(null);
 
-                if (typeof data === 'number' && Number.isFinite(data)) {
-                    setCompletedCount(data);
-                    return;
-                }
+  const [readingTimeTotalMinutes, setReadingTimeTotalMinutes] = useState<number | null>(null);
+  const [isReadingTimeTotalLoading, setIsReadingTimeTotalLoading] = useState(false);
+  const [readingTimeTotalError, setReadingTimeTotalError] = useState<string | null>(null);
 
-                if (typeof data === 'string') {
-                    const parsed = Number(data);
-                    setCompletedCount(Number.isFinite(parsed) ? parsed : 0);
-                    return;
-                }
+  const [readingTimeTodayMinutes, setReadingTimeTodayMinutes] = useState<number | null>(null);
+  const [isReadingTimeTodayLoading, setIsReadingTimeTodayLoading] = useState(false);
+  const [readingTimeTodayError, setReadingTimeTodayError] = useState<string | null>(null);
 
-                setCompletedCount(0);
-            } catch {
-                if (!isActive) return;
-                setCompletedCountError("O'qilgan kitoblar sonini yuklashda xatolik yuz berdi.");
-                setCompletedCount(null);
-            } finally {
-                if (!isActive) return;
-                setIsCompletedCountLoading(false);
-            }
-        };
+  useEffect(() => {
+    let isActive = true;
 
-        void fetchCompletedCount();
+    const fetchCompletedCount = async () => {
+      setIsCompletedCountLoading(true);
+      setCompletedCountError(null);
+      try {
+        const { data } = await api.get<number | string>("/api/me/books/completed-count");
+        if (!isActive) return;
+        if (typeof data === "number" && Number.isFinite(data)) {
+          setCompletedCount(data);
+        } else if (typeof data === "string") {
+          const parsed = Number(data);
+          setCompletedCount(Number.isFinite(parsed) ? parsed : 0);
+        } else {
+          setCompletedCount(0);
+        }
+      } catch {
+        if (!isActive) return;
+        setCompletedCountError("O'qilgan kitoblar sonini yuklashda xatolik.");
+        setCompletedCount(null);
+      } finally {
+        if (isActive) setIsCompletedCountLoading(false);
+      }
+    };
 
-        return () => {
-            isActive = false;
-        };
-    }, []);
+    void fetchCompletedCount();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
-    useEffect(() => {
-        let isActive = true;
+  useEffect(() => {
+    let isActive = true;
+    const fetchReadingTime = async () => {
+      setIsReadingTimeLoading(true);
+      setReadingTimeError(null);
+      try {
+        const { data } = await api.get<number | string>("/api/me/books/mutoala-vaqti");
+        if (!isActive) return;
+        setReadingTimeMinutes(parseReadingTimeMinutes(data));
+      } catch {
+        if (!isActive) return;
+        setReadingTimeError("Mutolaa vaqtini yuklashda xatolik.");
+        setReadingTimeMinutes(null);
+      } finally {
+        if (isActive) setIsReadingTimeLoading(false);
+      }
+    };
+    void fetchReadingTime();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
-        const fetchReadingTime = async () => {
-            setIsReadingTimeLoading(true);
-            setReadingTimeError(null);
-            try {
-                const { data } = await api.get<number | string>('/api/me/books/mutoala-vaqti');
-                if (!isActive) return;
-                setReadingTimeMinutes(parseReadingTimeMinutes(data));
-            } catch {
-                if (!isActive) return;
-                setReadingTimeError("Mutolaa vaqtini yuklashda xatolik yuz berdi.");
-                setReadingTimeMinutes(null);
-            } finally {
-                if (!isActive) return;
-                setIsReadingTimeLoading(false);
-            }
-        };
+  useEffect(() => {
+    let isActive = true;
+    const fetchReadingTimeTotal = async () => {
+      setIsReadingTimeTotalLoading(true);
+      setReadingTimeTotalError(null);
+      try {
+        const { data } = await api.get<number | string>("/api/me/books/full-mutoala-vaqti");
+        if (!isActive) return;
+        setReadingTimeTotalMinutes(parseReadingTimeMinutes(data));
+      } catch {
+        if (!isActive) return;
+        setReadingTimeTotalError("Umumiy mutolaa vaqtini yuklashda xatolik.");
+        setReadingTimeTotalMinutes(null);
+      } finally {
+        if (isActive) setIsReadingTimeTotalLoading(false);
+      }
+    };
+    void fetchReadingTimeTotal();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
-        void fetchReadingTime();
+  useEffect(() => {
+    let isActive = true;
+    const fetchReadingTimeToday = async () => {
+      setIsReadingTimeTodayLoading(true);
+      setReadingTimeTodayError(null);
+      try {
+        const { data } = await api.get<number | string>("/api/me/books/mutoala-vaqti-today");
+        if (!isActive) return;
+        setReadingTimeTodayMinutes(parseReadingTimeMinutes(data));
+      } catch {
+        if (!isActive) return;
+        setReadingTimeTodayError("Bugungi mutolaa vaqtini yuklashda xatolik.");
+        setReadingTimeTodayMinutes(null);
+      } finally {
+        if (isActive) setIsReadingTimeTodayLoading(false);
+      }
+    };
+    void fetchReadingTimeToday();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
-        return () => {
-            isActive = false;
-        };
-    }, []);
+  const completedCountDisplay = isCompletedCountLoading
+    ? "..."
+    : typeof completedCount === "number"
+      ? completedCount.toString()
+      : "--";
 
-    useEffect(() => {
-        let isActive = true;
+  const readingLast7 = useMemo(
+    () => (typeof readingTimeMinutes === "number" ? formatReadingTime(readingTimeMinutes) : null),
+    [readingTimeMinutes],
+  );
+  const readingTotal = useMemo(
+    () =>
+      typeof readingTimeTotalMinutes === "number"
+        ? formatReadingTime(readingTimeTotalMinutes)
+        : null,
+    [readingTimeTotalMinutes],
+  );
+  const readingToday = useMemo(
+    () =>
+      typeof readingTimeTodayMinutes === "number"
+        ? formatReadingTime(readingTimeTodayMinutes)
+        : null,
+    [readingTimeTodayMinutes],
+  );
 
-        const fetchReadingTimeTotal = async () => {
-            setIsReadingTimeTotalLoading(true);
-            setReadingTimeTotalError(null);
-            try {
-                const { data } = await api.get<number | string>('/api/me/books/full-mutoala-vaqti');
-                if (!isActive) return;
-                setReadingTimeTotalMinutes(parseReadingTimeMinutes(data));
-            } catch {
-                if (!isActive) return;
-                setReadingTimeTotalError("Umumiy mutolaa vaqtini yuklashda xatolik yuz berdi.");
-                setReadingTimeTotalMinutes(null);
-            } finally {
-                if (!isActive) return;
-                setIsReadingTimeTotalLoading(false);
-            }
-        };
-
-        void fetchReadingTimeTotal();
-
-        return () => {
-            isActive = false;
-        };
-    }, []);
-
-    useEffect(() => {
-        let isActive = true;
-
-        const fetchReadingTimeToday = async () => {
-            setIsReadingTimeTodayLoading(true);
-            setReadingTimeTodayError(null);
-            try {
-                const { data } = await api.get<number | string>('/api/me/books/mutoala-vaqti-today');
-                if (!isActive) return;
-                setReadingTimeTodayMinutes(parseReadingTimeMinutes(data));
-            } catch {
-                if (!isActive) return;
-                setReadingTimeTodayError("Bugungi mutolaa vaqtini yuklashda xatolik yuz berdi.");
-                setReadingTimeTodayMinutes(null);
-            } finally {
-                if (!isActive) return;
-                setIsReadingTimeTodayLoading(false);
-            }
-        };
-
-        void fetchReadingTimeToday();
-
-        return () => {
-            isActive = false;
-        };
-    }, []);
-
-    const completedCountDisplay = isCompletedCountLoading
-        ? '...'
-        : typeof completedCount === 'number'
-            ? completedCount.toString()
-            : '--';
-    const readingTimeDisplay =
-        typeof readingTimeMinutes === 'number' ? formatReadingTime(readingTimeMinutes) : null;
-    const readingTimeDisplayValue = isReadingTimeLoading ? '...' : readingTimeDisplay?.value ?? '--';
-    const readingTimeDisplayUnit = isReadingTimeLoading ? undefined : readingTimeDisplay?.unit;
-    const readingTimeTotalDisplay =
-        typeof readingTimeTotalMinutes === 'number'
-            ? formatReadingTime(readingTimeTotalMinutes)
-            : null;
-    const readingTimeTotalDisplayValue = isReadingTimeTotalLoading
-        ? '...'
-        : readingTimeTotalDisplay?.value ?? '--';
-    const readingTimeTotalDisplayUnit = isReadingTimeTotalLoading
-        ? undefined
-        : readingTimeTotalDisplay?.unit;
-    const readingTimeTodayDisplay =
-        typeof readingTimeTodayMinutes === 'number'
-            ? formatReadingTime(readingTimeTodayMinutes)
-            : null;
-    const readingTimeTodayDisplayValue = isReadingTimeTodayLoading
-        ? '...'
-        : readingTimeTodayDisplay?.value ?? '--';
-    const readingTimeTodayDisplayUnit = isReadingTimeTodayLoading
-        ? undefined
-        : readingTimeTodayDisplay?.unit;
-
-    return (
-        <div className="max-w-7xl mx-auto px-4 py-12 space-y-10">
-            <header className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-                <div className="space-y-2">
-                    <h1 className="text-3xl font-bold uppercase tracking-tight text-[#2B2B2B] sm:text-4xl">
-                        Xush kelibsiz, <span className="text-[#6B4F3A]">{user?.username}</span>!
-                    </h1>
-                    <div className="flex flex-wrap items-center gap-3 text-sm">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-[#E3DBCF] bg-white/80 px-3 py-1 text-[#6B6B6B] dark:border-white/10 dark:bg-[#1C2026] dark:text-[#C7CBD3]">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#6B4F3A] dark:bg-[#C9A27A]" />
-                            Sizning mutolaa olamingiz
-                        </span>
-                        <Link
-                            to="/profile"
-                            className="inline-flex items-center gap-2 rounded-full border border-[#6B4F3A]/30 bg-[#6B4F3A]/15 px-3 py-1 font-medium text-[#6B4F3A] transition hover:bg-[#6B4F3A]/20 dark:border-[#C9A27A]/30 dark:bg-[#C9A27A]/15 dark:text-[#E6D5C1] dark:hover:bg-[#C9A27A]/25"
-                        >
-                            Profilni boshqarish
-                        </Link>
-                    </div>
-                </div>
-                <div className="flex flex-wrap gap-4">
-                    <div className="glass px-6 py-3 rounded-2xl flex items-center gap-3">
-                        <div className="p-2 bg-[#6B4F3A]/15 rounded-lg">
-                            <Award className="text-[#6B4F3A]" size={20} />
-                        </div>
-                        <div>
-                            <p className="text-xs text-[#9A9A9A] uppercase font-bold">Daraja</p>
-                            <p className="text-[#2B2B2B] font-medium">Kitobxon</p>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            {/* Stats Grid */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigate('/profile/completed')}
-                    onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            navigate('/profile/completed');
-                        }
-                    }}
-                    className="glass-dark p-6 rounded-3xl border-[#E3DBCF] space-y-4 transition hover:border-[#6B4F3A]/30 hover:shadow-[0_12px_24px_rgba(107,79,58,0.12)] cursor-pointer"
-                >
-                    <div className="flex items-center justify-between">
-                        <div className="p-3 bg-[#8FA68E]/20 rounded-2xl">
-                            <BookOpen className="text-[#8FA68E]" size={24} />
-                        </div>
-                        <span className="text-xs text-[#9A9A9A] font-medium">Jami</span>
-                    </div>
-                    <div>
-                        <p className="text-3xl font-bold text-[#2B2B2B]">{completedCountDisplay}</p>
-                        <p className="text-sm text-[#6B6B6B]">O'qilgan kitoblar</p>
-                        {completedCountError ? (
-                            <p className="text-xs text-[#C97B63] mt-2">{completedCountError}</p>
-                        ) : null}
-                    </div>
-                </div>
-
-                <div className="glass-dark p-6 rounded-3xl border-[#E3DBCF] space-y-4 relative overflow-hidden">
-                    <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#8FA68E]/10 blur-2xl" />
-                    <div className="flex items-center justify-between relative">
-                        <div className="p-3 bg-[#8FA68E]/20 rounded-2xl">
-                            <Clock className="text-[#8FA68E]" size={24} />
-                        </div>
-                        <span className="text-xs text-[#9A9A9A] font-medium">Jami</span>
-                    </div>
-                    <div className="relative">
-                        <div className="flex items-end gap-1">
-                            <span
-                                className={`text-3xl font-bold text-[#2B2B2B] sm:text-4xl ${isReadingTimeTotalLoading ? 'animate-pulse' : ''}`}
-                            >
-                                {readingTimeTotalDisplayValue}
-                            </span>
-                            {readingTimeTotalDisplayUnit ? (
-                                <span className="mb-1 text-sm font-semibold text-[#6B6B6B]">
-                                    {readingTimeTotalDisplayUnit}
-                                </span>
-                            ) : null}
-                        </div>
-                        <p className="text-sm text-[#6B6B6B]">Mutolaa vaqti</p>
-                        {readingTimeTotalError ? (
-                            <p className="text-xs text-[#C97B63] mt-2">{readingTimeTotalError}</p>
-                        ) : null}
-                    </div>
-                </div>
-
-                <div className="glass-dark p-6 rounded-3xl border-[#E3DBCF] space-y-4 relative overflow-hidden">
-                    <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#C97B63]/10 blur-2xl" />
-                    <div className="flex items-center justify-between relative">
-                        <div className="p-3 bg-[#C97B63]/15 rounded-2xl">
-                            <Clock className="text-[#C97B63]" size={24} />
-                        </div>
-                        <span className="text-xs text-[#9A9A9A] font-medium">Oxirgi 7 kun</span>
-                    </div>
-                    <div className="relative">
-                        <div className="flex items-end gap-1">
-                            <span
-                                className={`text-3xl font-bold text-[#2B2B2B] sm:text-4xl ${isReadingTimeLoading ? 'animate-pulse' : ''}`}
-                            >
-                                {readingTimeDisplayValue}
-                            </span>
-                            {readingTimeDisplayUnit ? (
-                                <span className="mb-1 text-sm font-semibold text-[#6B6B6B]">
-                                    {readingTimeDisplayUnit}
-                                </span>
-                            ) : null}
-                        </div>
-                        <p className="text-sm text-[#6B6B6B]">Mutolaa vaqti</p>
-                        {readingTimeError ? (
-                            <p className="text-xs text-[#C97B63] mt-2">{readingTimeError}</p>
-                        ) : null}
-                    </div>
-                </div>
-
-                <div className="glass-dark p-6 rounded-3xl border-[#E3DBCF] space-y-4 relative overflow-hidden">
-                    <div className="absolute -left-6 -top-6 h-24 w-24 rounded-full bg-[#8FA68E]/10 blur-2xl" />
-                    <div className="flex items-center justify-between relative">
-                        <div className="p-3 bg-[#8FA68E]/20 rounded-2xl">
-                            <Clock className="text-[#8FA68E]" size={24} />
-                        </div>
-                        <span className="text-xs text-[#9A9A9A] font-medium">Bugun</span>
-                    </div>
-                    <div className="relative">
-                        <div className="flex items-end gap-1">
-                            <span
-                                className={`text-3xl font-bold text-[#2B2B2B] sm:text-4xl ${isReadingTimeTodayLoading ? 'animate-pulse' : ''}`}
-                            >
-                                {readingTimeTodayDisplayValue}
-                            </span>
-                            {readingTimeTodayDisplayUnit ? (
-                                <span className="mb-1 text-sm font-semibold text-[#6B6B6B]">
-                                    {readingTimeTodayDisplayUnit}
-                                </span>
-                            ) : null}
-                        </div>
-                        <p className="text-sm text-[#6B6B6B]">Mutolaa vaqti</p>
-                        {readingTimeTodayError ? (
-                            <p className="text-xs text-[#C97B63] mt-2">{readingTimeTodayError}</p>
-                        ) : null}
-                    </div>
-                </div>
+  return (
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:py-10">
+      <HeroSection
+        title={`Xush kelibsiz, ${(user?.username ?? "kitobxon").toUpperCase()}!`}
+        subtitle="Bugungi o'qish jarayoningizni kuzating, tavsiyalarni ko'ring va mutolaa ritmingizni bir joydan boshqaring."
+        chips={["Sizning mutolaa olamingiz"]}
+        action={{
+          label: "Profilni boshqarish",
+          onClick: () => navigate("/profile"),
+        }}
+        sideContent={
+          <div className="dashboard-card">
+            <div className="flex items-center gap-3">
+              <span
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border"
+                style={{
+                  borderColor: "color-mix(in srgb, var(--c-accent) 32%, transparent)",
+                  backgroundColor:
+                    "color-mix(in srgb, var(--c-accent-soft) 56%, transparent)",
+                  color: "var(--c-accent)",
+                }}
+              >
+                <Award size={20} />
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--c-text-muted)]">
+                  Daraja
+                </p>
+                <p className="text-lg font-semibold text-[color:var(--c-text-primary)]">
+                  Kitobxon
+                </p>
+              </div>
             </div>
+            <div className="mt-3">
+              <BadgeChip variant="success">Faol o'quvchi</BadgeChip>
+            </div>
+          </div>
+        }
+      />
 
-            <NewBooksSection limit={6} layout="carousel" showHeader showAllLink={false} />
-            <SizUchunSection limit={6} layout="carousel" showHeader showAllLink />
-            <TopKitoblarSection limit={10} layout="carousel" showHeader showAllLink />
-            <AuthorsSection limit={8} layout="carousel" showHeader showAllLink />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          icon={BookOpen}
+          label="Jami o'qilganlar"
+          value={completedCountDisplay}
+          helper="O'qilgan kitoblar"
+          hint="Barcha vaqt"
+          interactive
+          onClick={() => navigate("/profile/completed")}
+          error={completedCountError}
+        />
+        <StatCard
+          icon={Clock}
+          label="Umumiy mutolaa"
+          value={isReadingTimeTotalLoading ? "..." : readingTotal?.value ?? "--"}
+          unit={isReadingTimeTotalLoading ? undefined : readingTotal?.unit}
+          helper="Barcha sessiyalar bo'yicha"
+          hint="Jami"
+          error={readingTimeTotalError}
+        />
+        <StatCard
+          icon={Clock}
+          label="Oxirgi 7 kun"
+          value={isReadingTimeLoading ? "..." : readingLast7?.value ?? "--"}
+          unit={isReadingTimeLoading ? undefined : readingLast7?.unit}
+          helper="Haftalik mutolaa"
+          hint="7 kun"
+          error={readingTimeError}
+        />
+        <StatCard
+          icon={Clock}
+          label="Bugungi mutolaa"
+          value={isReadingTimeTodayLoading ? "..." : readingToday?.value ?? "--"}
+          unit={isReadingTimeTodayLoading ? undefined : readingToday?.unit}
+          helper="Bugungi faoliyat"
+          hint="Bugun"
+          error={readingTimeTodayError}
+        />
+      </div>
 
-            {/* Pastki bloklar vaqtincha olib tashlandi */}
-        </div>
-    );
+      <div className="space-y-8">
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-[color:var(--c-text-primary)]">
+              Yangi qo'shilganlar
+            </h3>
+            <Link to="/books" className="text-sm font-semibold text-[color:var(--c-accent)]">
+              Barchasi
+            </Link>
+          </div>
+          <NewBooksSection limit={6} layout="carousel" showHeader={false} />
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-[color:var(--c-text-primary)]">
+              Siz uchun
+            </h3>
+            <Link
+              to="/books/siz-uchun"
+              className="text-sm font-semibold text-[color:var(--c-accent)]"
+            >
+              Barchasi
+            </Link>
+          </div>
+          <SizUchunSection limit={6} layout="carousel" showHeader={false} />
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-[color:var(--c-text-primary)]">
+              Eng ko'p o'qilganlar
+            </h3>
+            <Link
+              to="/books/top-kitoblar"
+              className="text-sm font-semibold text-[color:var(--c-accent)]"
+            >
+              Barchasi
+            </Link>
+          </div>
+          <TopKitoblarSection limit={10} layout="carousel" showHeader={false} />
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-[color:var(--c-text-primary)]">
+              Mualliflar
+            </h3>
+            <Link to="/authors" className="text-sm font-semibold text-[color:var(--c-accent)]">
+              Barchasi
+            </Link>
+          </div>
+          <AuthorsSection limit={8} layout="carousel" showHeader={false} />
+        </section>
+      </div>
+    </div>
+  );
 };
 
 export default UserDashboard;
-
-
-

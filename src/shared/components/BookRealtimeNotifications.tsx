@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/useAuth";
@@ -9,6 +9,16 @@ import {
 } from "../../services/bookRealtimeBus";
 
 const BOOK_TOPIC_DESTINATION = "/topic/books";
+
+const resolveBookId = (payload: NewBookNotificationPayload): number | null => {
+  if (typeof payload.id === "number" && Number.isFinite(payload.id)) {
+    return payload.id;
+  }
+  if (typeof payload.bookId === "number" && Number.isFinite(payload.bookId)) {
+    return payload.bookId;
+  }
+  return null;
+};
 
 const BookRealtimeNotifications: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -56,18 +66,27 @@ const BookRealtimeNotifications: React.FC = () => {
         unsubscribe = client.subscribe(
           BOOK_TOPIC_DESTINATION,
           (payload: Record<string, unknown>) => {
-            const data = payload as NewBookNotificationPayload;
+            const rawData = payload as NewBookNotificationPayload;
+            const bookId = resolveBookId(rawData);
+            const data: NewBookNotificationPayload = {
+              ...rawData,
+              id: bookId ?? rawData.id,
+              bookId: bookId ?? rawData.bookId,
+              title: rawData.title ?? rawData.name,
+              author: rawData.author ?? rawData.authorName,
+            };
+
             console.log("[BOOK_NOTIFICATION]", data);
 
             if (data.type !== "NEW_BOOK") return;
 
-            const key = `${data.type}:${data.bookId ?? "n/a"}:${data.title ?? ""}`;
+            const key = `${data.type}:${bookId ?? "n/a"}:${data.title ?? ""}`;
             if (isDuplicate(key)) return;
 
-                        const bookId = typeof data.bookId === "number" ? data.bookId : null;
             const toastText = data.message
-              ? `${data.message}: ${data.title ?? ""}`
+              ? `${data.message}: ${data.title ?? ""}${data.author ? ` - ${data.author}` : ""}`
               : `Yangi kitob qo'shildi: ${data.title ?? ""}`;
+
             toast.info(toastText, {
               toastId: key,
               position: "top-center",
@@ -83,6 +102,7 @@ const BookRealtimeNotifications: React.FC = () => {
                 }
               },
             });
+
             emitNewBookEvent(data);
           },
         );
@@ -107,5 +127,3 @@ const BookRealtimeNotifications: React.FC = () => {
 };
 
 export default BookRealtimeNotifications;
-
-

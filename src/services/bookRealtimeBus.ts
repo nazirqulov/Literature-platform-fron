@@ -1,7 +1,10 @@
 export type NewBookNotificationPayload = {
   type?: string;
+  id?: number;
   bookId?: number;
   title?: string;
+  name?: string;
+  author?: string;
   authorName?: string;
   message?: string;
 };

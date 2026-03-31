@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import BookCard from "../../shared/components/ui/BookCard";
+import SectionHeader from "../../shared/components/ui/SectionHeader";
 
 interface BookProgressResponse {
   bookId?: number;
@@ -201,35 +202,30 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
 
   const listClassName =
     layout === "grid"
-      ? "grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
-      : "flex gap-4 overflow-x-auto pb-2";
+      ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      : "no-scrollbar flex gap-4 overflow-x-auto pb-2";
 
   return (
     <div className="space-y-4">
       {showHeader ? (
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-[#2B2B2B]">Siz uchun</h2>
-          {showAllLink ? (
-            <Link
-              to="/books/siz-uchun"
-              className="text-sm font-semibold text-[#6B4F3A] hover:text-[#5A4030]"
-            >
-              Barchasi
-            </Link>
-          ) : null}
-        </div>
+        <SectionHeader
+          title="Siz uchun"
+          subtitle="Mutolaa odatlaringiz asosida tavsiyalar"
+          actionLabel={showAllLink ? "Barchasi" : undefined}
+          actionTo={showAllLink ? "/books/siz-uchun" : undefined}
+        />
       ) : null}
 
       {loading ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
           Yuklanmoqda...
         </div>
       ) : error ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#C97B63]">
+        <div className="dashboard-card text-sm text-[color:var(--c-danger)]">
           {error}
         </div>
       ) : visibleItems.length === 0 ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
           Hozircha tavsiya yo'q.
         </div>
       ) : (
@@ -247,67 +243,26 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
               typeof item.bookId === "number" &&
               coversById[item.bookId] === undefined &&
               !fallbackCover;
-            const ratingLabel =
+            const parsedRating =
               typeof item.userRating === "number"
-                ? item.userRating.toFixed(1)
+                ? item.userRating
                 : typeof detail?.averageRating === "number"
-                  ? detail.averageRating.toFixed(1)
-                  : null;
+                  ? detail.averageRating
+                  : NaN;
+            const ratingValue = Number.isFinite(parsedRating)
+              ? Math.max(0, Math.min(5, parsedRating))
+              : null;
             return (
-              <button
+              <BookCard
                 key={`${item.bookId ?? "book"}-${index}`}
-                type="button"
-                onClick={() =>
-                  item.bookId ? navigate(`/books/${item.bookId}`) : undefined
-                }
-                className={`group relative overflow-hidden rounded-3xl border border-[#E3DBCF] bg-white text-left shadow-sm transition hover:border-[#6B4F3A]/40 hover:shadow-md ${
-                  layout === "grid" ? "w-full" : "w-60 shrink-0"
-                }`}
-              >
-                <div className="relative h-40 w-full overflow-hidden bg-[#F5F1E8]">
-                  {coverUrl ? (
-                    <img
-                      src={coverUrl}
-                      alt={item.bookTitle ?? "Kitob"}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : isCoverLoading ? (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#9A9A9A]">
-                      Yuklanmoqda...
-                    </div>
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#9A9A9A]">
-                      Muqova mavjud emas
-                    </div>
-                  )}
-
-                  <div className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-2xl bg-white/90 text-[#6B4F3A] shadow">
-                    <BookOpen size={16} />
-                  </div>
-
-                  {ratingLabel ? (
-                    <div className="absolute right-3 top-3 flex items-center gap-1 rounded-2xl bg-white/95 px-2 py-1 text-xs font-semibold text-[#2B2B2B] shadow">
-                      <Star size={14} className="fill-[#C97B63] text-[#C97B63]" />
-                      {ratingLabel}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="space-y-1 px-4 py-3">
-                  <p className="truncate text-sm text-[#6B6B6B]">
-                    <span className="text-[#9A9A9A] font-semibold">Kitob:</span>{" "}
-                    <span className="text-[#2B2B2B] font-semibold">
-                      {item.bookTitle ?? detail?.title ?? "Kitob nomi ko'rsatilmagan"}
-                    </span>
-                  </p>
-                  <p className="truncate text-sm text-[#6B6B6B]">
-                    <span className="text-[#9A9A9A] font-semibold">Muallif:</span>{" "}
-                    <span>
-                      {item.bookAuthors ?? detail?.authorName ?? "Muallif ko'rsatilmagan"}
-                    </span>
-                  </p>
-                </div>
-              </button>
+                onClick={() => (item.bookId ? navigate(`/books/${item.bookId}`) : undefined)}
+                title={item.bookTitle ?? detail?.title ?? "Kitob nomi ko'rsatilmagan"}
+                author={item.bookAuthors ?? detail?.authorName ?? "Muallif ko'rsatilmagan"}
+                coverUrl={coverUrl}
+                loadingCover={isCoverLoading}
+                rating={ratingValue}
+                className={layout === "grid" ? "w-full" : "w-[216px] shrink-0"}
+              />
             );
           })}
         </div>

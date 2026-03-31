@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, Sparkles, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import BookCard from "../../shared/components/ui/BookCard";
+import SectionHeader from "../../shared/components/ui/SectionHeader";
 
 interface BookResponse {
   id?: number;
@@ -132,40 +133,30 @@ const NewBooksSection: React.FC<NewBooksSectionProps> = ({
 
   const listClassName =
     layout === "grid"
-      ? "grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
-      : "flex gap-4 overflow-x-auto pb-2";
+      ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      : "no-scrollbar flex gap-4 overflow-x-auto pb-2";
 
   return (
     <div className="space-y-4">
       {showHeader ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-[#6B4F3A]/10 text-[#6B4F3A]">
-              <Sparkles size={16} />
-            </span>
-            <h2 className="text-xl font-bold text-[#2B2B2B]">Yangi kitoblar</h2>
-          </div>
-          {showAllLink ? (
-            <Link
-              to="/books"
-              className="text-sm font-semibold text-[#6B4F3A] hover:text-[#5A4030]"
-            >
-              Barchasi
-            </Link>
-          ) : null}
-        </div>
+        <SectionHeader
+          title="Yangi kitoblar"
+          subtitle="So'nggi qo'shilgan kitoblarni birinchi bo'lib ko'ring"
+          actionLabel={showAllLink ? "Barchasi" : undefined}
+          actionTo={showAllLink ? "/books" : undefined}
+        />
       ) : null}
 
       {loading ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
           Yuklanmoqda...
         </div>
       ) : error ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#C97B63]">
+        <div className="dashboard-card text-sm text-[color:var(--c-danger)]">
           {error}
         </div>
       ) : visibleItems.length === 0 ? (
-        <div className="glass rounded-2xl p-6 text-sm text-[#6B6B6B]">
+        <div className="dashboard-card text-sm text-[color:var(--c-text-secondary)]">
           Hozircha yangi kitob yo'q.
         </div>
       ) : (
@@ -179,63 +170,29 @@ const NewBooksSection: React.FC<NewBooksSectionProps> = ({
               typeof item.id === "number" &&
               coversById[item.id] === undefined &&
               !fallbackCover;
-            const ratingValue =
+            const parsedRating =
               typeof item.averageRating === "number"
-                ? Math.max(0, Math.min(5, item.averageRating))
-                : null;
+                ? item.averageRating
+                : typeof item.averageRating === "string"
+                  ? Number(item.averageRating)
+                  : NaN;
+            const ratingValue = Number.isFinite(parsedRating)
+              ? Math.max(0, Math.min(5, parsedRating))
+              : null;
             return (
-              <button
+              <BookCard
                 key={`${item.id ?? "book"}-${index}`}
-                type="button"
-                onClick={() =>
-                  item.id ? navigate(`/books/${item.id}`) : undefined
+                onClick={() => (item.id ? navigate(`/books/${item.id}`) : undefined)}
+                title={item.title ?? "Kitob nomi ko'rsatilmagan"}
+                author={item.author?.name ?? "Muallif ko'rsatilmagan"}
+                coverUrl={coverUrl}
+                loadingCover={isCoverLoading}
+                rating={ratingValue}
+                ratingCount={
+                  typeof item.ratingCount === "number" ? item.ratingCount : undefined
                 }
-                className={`group relative overflow-hidden rounded-3xl border border-[#E3DBCF] bg-white text-left shadow-sm transition hover:border-[#6B4F3A]/40 hover:shadow-md ${
-                  layout === "grid" ? "w-full" : "w-60 shrink-0"
-                }`}
-              >
-                <div className="relative h-40 w-full overflow-hidden bg-[#F5F1E8]">
-                  {coverUrl ? (
-                    <img
-                      src={coverUrl}
-                      alt={item.title ?? "Kitob"}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : isCoverLoading ? (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#9A9A9A]">
-                      Yuklanmoqda...
-                    </div>
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#9A9A9A]">
-                      Muqova mavjud emas
-                    </div>
-                  )}
-
-                  <div className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-2xl bg-white/90 text-[#6B4F3A] shadow">
-                    <BookOpen size={16} />
-                  </div>
-
-                  {ratingValue != null ? (
-                    <div className="absolute right-3 top-3 flex items-center gap-1 rounded-2xl bg-white/95 px-2 py-1 text-xs font-semibold text-[#2B2B2B] shadow">
-                      <Star size={14} className="fill-[#C97B63] text-[#C97B63]" />
-                      {ratingValue.toFixed(1)}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="space-y-1 px-4 py-3">
-                  <p className="truncate text-sm text-[#6B6B6B]">
-                    <span className="text-[#9A9A9A] font-semibold">Kitob:</span>{" "}
-                    <span className="text-[#2B2B2B] font-semibold">
-                      {item.title ?? "Kitob nomi ko'rsatilmagan"}
-                    </span>
-                  </p>
-                  <p className="truncate text-sm text-[#6B6B6B]">
-                    <span className="text-[#9A9A9A] font-semibold">Muallif:</span>{" "}
-                    <span>{item.author?.name ?? "Muallif ko'rsatilmagan"}</span>
-                  </p>
-                </div>
-              </button>
+                className={layout === "grid" ? "w-full" : "w-[216px] shrink-0"}
+              />
             );
           })}
         </div>
