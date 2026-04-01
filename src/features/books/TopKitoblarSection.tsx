@@ -74,16 +74,7 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
     const idsToFetch = items
       .map((item) => item.id)
       .filter((id): id is number => typeof id === "number")
-      .filter((id) => !enrichedIdsRef.current.has(id))
-      .filter((id) => {
-        const item = items.find((entry) => entry.id === id);
-        if (!item) return false;
-        const missingTitle = !item.title;
-        const missingAuthor = !item.author?.name;
-        const missingCover = !item.coverImage;
-        const missingRating = typeof item.averageRating !== "number";
-        return missingTitle || missingAuthor || missingCover || missingRating;
-      });
+      .filter((id) => !enrichedIdsRef.current.has(id));
 
     if (idsToFetch.length === 0) return;
 
@@ -94,7 +85,7 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
             const { data } = await api.get(`/api/books/${id}`);
             return { id, data };
           } catch {
-            return null;
+            return { id, data: null };
           }
         }),
       );
@@ -102,11 +93,10 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
       setDetailsById((prev) => {
         const next = { ...prev };
         results.forEach((result) => {
-          if (!result) return;
           const detail =
             (result.data?.data as BookResponse | undefined) ??
             (result.data?.book as BookResponse | undefined) ??
-            (result.data as BookResponse);
+            (result.data as BookResponse | null);
           if (detail && typeof detail === "object") {
             next[result.id] = detail;
           }
@@ -215,7 +205,8 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
           {visibleItems.map((item, index) => {
             const detail =
               typeof item.id === "number" ? detailsById[item.id] : undefined;
-            const merged = detail ? { ...detail, ...item } : item;
+            // detail ma'lumotlari ustuvor: rating va count hamma joyda bir xil bo'lishi uchun
+            const merged = detail ? { ...item, ...detail } : item;
             const coverFromApi =
               typeof merged.id === "number" ? coversById[merged.id] : undefined;
             const fallbackCover = resolveCoverUrl(merged.coverImage ?? null);
@@ -228,6 +219,12 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
               typeof merged.averageRating === "number"
                 ? Math.max(0, Math.min(5, merged.averageRating))
                 : null;
+
+            const ratingCount =
+              typeof merged.ratingCount === "number"
+                ? Math.max(0, Math.floor(merged.ratingCount))
+                : undefined;
+
             return (
               <BookCard
                 key={`${merged.id ?? "book"}-${index}`}
@@ -237,9 +234,7 @@ const TopKitoblarSection: React.FC<TopKitoblarSectionProps> = ({
                 coverUrl={coverUrl}
                 loadingCover={isCoverLoading}
                 rating={ratingValue}
-                ratingCount={
-                  typeof merged.ratingCount === "number" ? merged.ratingCount : undefined
-                }
+                ratingCount={ratingCount}
                 className={layout === "grid" ? "w-full" : "w-[216px] shrink-0"}
               />
             );

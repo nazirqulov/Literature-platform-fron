@@ -1,4 +1,5 @@
 export type NewBookNotificationPayload = {
+  notificationId?: number;
   type?: string;
   id?: number;
   bookId?: number;

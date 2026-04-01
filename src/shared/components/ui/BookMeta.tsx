@@ -13,25 +13,26 @@ type BookMetaProps = {
 
 const BookMeta: React.FC<BookMetaProps> = ({ items, className = "" }) => {
   return (
-    <div className={`grid gap-3 sm:grid-cols-2 ${className}`}>
+    <div className={`grid gap-3 sm:grid-cols-2 xl:grid-cols-4 ${className}`}>
       {items.map((item) => (
         <div
           key={item.label}
-          className="rounded-xl border px-3 py-2.5"
+          className="group rounded-2xl px-4 py-3 transition"
           style={{
-            borderColor: "color-mix(in srgb, var(--c-border) 84%, transparent)",
             backgroundColor:
-              "color-mix(in srgb, var(--c-surface) 76%, transparent)",
+              "color-mix(in srgb, var(--c-surface) 84%, var(--c-surface-elevated))",
+            border: "1px solid color-mix(in srgb, var(--c-border) 52%, transparent)",
+            boxShadow: "0 1px 0 color-mix(in srgb, var(--c-border) 22%, transparent) inset",
           }}
         >
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--c-text-muted)]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--c-text-muted)]">
             {item.label}
           </p>
-          <p className="mt-1 line-clamp-2 text-sm font-medium text-[color:var(--c-text-primary)]">
+          <p className="mt-1.5 line-clamp-2 text-sm font-semibold leading-5 text-[color:var(--c-text-primary)]">
             {item.value || "--"}
           </p>
           {item.hint ? (
-            <p className="mt-1 text-[10px] text-[color:var(--c-text-muted)]">
+            <p className="mt-1 line-clamp-1 text-[11px] text-[color:var(--c-text-secondary)]">
               {item.hint}
             </p>
           ) : null}

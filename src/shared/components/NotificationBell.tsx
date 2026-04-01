@@ -6,6 +6,7 @@ import api from "../../services/api";
 import { subscribeNewBookEvent } from "../../services/bookRealtimeBus";
 
 type NotificationItem = {
+  notificationId?: number;
   id?: number;
   bookId?: number;
   type?: string;
@@ -33,7 +34,7 @@ const DEFAULT_PAGE: NotificationPage = {
 
 const PAGE_SIZE = 10;
 
-const toBookIdNumber = (value: unknown): number | null => {
+const toNumber = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
@@ -72,15 +73,20 @@ const extractArrayFromPayload = (raw: unknown): unknown[] => {
 
 const normalizeNotification = (raw: unknown): NotificationItem => {
   const typed = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const id = toBookIdNumber(typed.id);
+  const notificationId =
+    toNumber(typed.notificationId) ?? toNumber(typed.notification_id) ?? null;
+
+  // backend response: id => bookId
+  const id = toNumber(typed.id);
   const bookId =
-    toBookIdNumber(typed.bookId) ??
-    toBookIdNumber(typed.bookID) ??
-    toBookIdNumber(typed.book_id) ??
-    toBookIdNumber((typed.book as Record<string, unknown> | undefined)?.id) ??
+    toNumber(typed.bookId) ??
+    toNumber(typed.bookID) ??
+    toNumber(typed.book_id) ??
+    toNumber((typed.book as Record<string, unknown> | undefined)?.id) ??
     id;
 
   return {
+    notificationId: notificationId ?? undefined,
     id: id ?? undefined,
     bookId: bookId ?? undefined,
     type: typeof typed.type === "string" ? typed.type : undefined,
@@ -156,20 +162,20 @@ const extractBookIdFromSearchPayload = (data: unknown, title: string): number | 
   const fallback = exact ?? startsWith ?? normalizedRows[0];
 
   return (
-    toBookIdNumber(fallback.bookId) ??
-    toBookIdNumber(fallback.bookID) ??
-    toBookIdNumber(fallback.book_id) ??
-    toBookIdNumber(fallback.id)
+    toNumber(fallback.bookId) ??
+    toNumber(fallback.bookID) ??
+    toNumber(fallback.book_id) ??
+    toNumber(fallback.id)
   );
 };
 
 const resolveTitle = (item: NotificationItem) =>
-  item.title || item.name || item.message || "Bildirishnoma";
+  item.title || "Noma'lum kitob";
 
-const resolveMessage = (item: NotificationItem) => {
-  if (!item.title && !item.name) return "";
-  return item.message || "";
-};
+const resolveAuthor = (item: NotificationItem) =>
+  item.author || item.name || "Noma'lum muallif";
+
+const resolveMessage = (item: NotificationItem) => item.message || "";
 
 const NotificationBell: React.FC = () => {
   const navigate = useNavigate();
@@ -211,6 +217,35 @@ const NotificationBell: React.FC = () => {
     await Promise.all([fetchPage("unread", 0), fetchPage("read", 0)]);
   }, [fetchPage]);
 
+  const markAsRead = useCallback(async (item: NotificationItem) => {
+    if (!item.notificationId) return;
+
+    await api.put(`/api/notifications/mark-as-read/${item.notificationId}`);
+
+    setUnreadPage((prev) => {
+      const nextContent = prev.content.filter(
+        (entry) => entry.notificationId !== item.notificationId,
+      );
+      return {
+        ...prev,
+        content: nextContent,
+        totalElements: Math.max(0, prev.totalElements - 1),
+      };
+    });
+
+    setReadPage((prev) => {
+      const exists = prev.content.some(
+        (entry) => entry.notificationId === item.notificationId,
+      );
+      if (exists) return prev;
+      return {
+        ...prev,
+        content: [item, ...prev.content].slice(0, PAGE_SIZE),
+        totalElements: prev.totalElements + 1,
+      };
+    });
+  }, []);
+
   useEffect(() => {
     void fetchPage("unread", 0);
   }, [fetchPage]);
@@ -225,7 +260,7 @@ const NotificationBell: React.FC = () => {
     const unsubscribe = subscribeNewBookEvent((payload) => {
       if (payload.type !== "NEW_BOOK") return;
 
-      const incomingBookId = toBookIdNumber(payload.id) ?? toBookIdNumber(payload.bookId);
+      const incomingBookId = toNumber(payload.id) ?? toNumber(payload.bookId);
       if (incomingBookId != null) {
         setLatestBookId(incomingBookId);
       }
@@ -315,8 +350,16 @@ const NotificationBell: React.FC = () => {
   };
 
   const handleOpenNotification = async (item: NotificationItem) => {
+    if (activeTab === "unread") {
+      try {
+        await markAsRead(item);
+      } catch {
+        toast.error("Bildirishnomani o'qilgan holatga o'tkazib bo'lmadi.");
+      }
+    }
+
     const targetBookId =
-      toBookIdNumber(item.bookId) ?? toBookIdNumber(item.id) ?? latestBookId;
+      toNumber(item.bookId) ?? toNumber(item.id) ?? latestBookId;
 
     if (typeof targetBookId === "number" && Number.isFinite(targetBookId)) {
       const opened = await openBookDetail(targetBookId, true);
@@ -406,9 +449,11 @@ const NotificationBell: React.FC = () => {
               </p>
             ) : (
               activePage.content.map((item, index) => {
-                const key = item.id ?? `notification-${index}`;
+                const key = item.notificationId ?? item.id ?? `notification-${index}`;
                 const title = resolveTitle(item);
+                const author = resolveAuthor(item);
                 const message = resolveMessage(item);
+
                 return (
                   <button
                     key={key}
@@ -417,18 +462,27 @@ const NotificationBell: React.FC = () => {
                     className="w-full rounded-xl border border-[#E3DBCF] bg-[#F5F1E8]/40 p-3 text-left transition hover:border-[#6B4F3A]/30"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-medium text-[#2B2B2B]">{title}</p>
+                      <div className="space-y-1">
+                        <p className="text-xs font-normal text-[#6B6B6B]">
+                          Kitob nomi: {title}
+                        </p>
+                        <p className="text-xs font-normal text-[#6B6B6B]">
+                          Kitob muallifi: {author}
+                        </p>
+                        {message ? (
+                          <p className="line-clamp-2 text-xs font-normal text-[#6B6B6B]">
+                            {message}
+                          </p>
+                        ) : null}
+                      </div>
                       {activeTab === "unread" ? (
                         <span className="mt-1 h-2 w-2 rounded-full bg-[#6B4F3A]" />
                       ) : null}
                     </div>
-                    {message ? (
-                      <p className="mt-1 line-clamp-2 text-xs text-[#6B6B6B]">{message}</p>
-                    ) : null}
-                    <div className="mt-2 flex items-center justify-between">
-                      <p className="text-[11px] uppercase text-[#9A9A9A]">
-                        {item.type ?? "INFO"}
-                      </p>
+
+
+
+                    <div className="mt-2 flex items-center justify-end">
                       <p className="text-[11px] font-semibold text-[#6B4F3A]">Ochish</p>
                     </div>
                   </button>
@@ -465,3 +519,5 @@ const NotificationBell: React.FC = () => {
 };
 
 export default NotificationBell;
+
+

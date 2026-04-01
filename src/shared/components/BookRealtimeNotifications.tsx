@@ -80,7 +80,7 @@ const BookRealtimeNotifications: React.FC = () => {
 
             if (data.type !== "NEW_BOOK") return;
 
-            const key = `${data.type}:${bookId ?? "n/a"}:${data.title ?? ""}`;
+            const key = `${data.type}:${data.notificationId ?? "n/a"}:${bookId ?? "n/a"}:${data.title ?? ""}`;
             if (isDuplicate(key)) return;
 
             const toastText = data.message

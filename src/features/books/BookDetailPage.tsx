@@ -525,7 +525,7 @@ const BookDetailPage: React.FC = () => {
   }
 
   return (
-    <section className="mx-auto max-w-6xl space-y-6 px-4 py-10">
+    <section className="mx-auto max-w-6xl space-y-5 px-4 py-8 sm:space-y-6 sm:py-10">
       <BookDetailHero
         title={book?.title ?? "Kitob nomi ko'rsatilmagan"}
         author={book?.author?.name ?? "Muallif ko'rsatilmagan"}
@@ -543,14 +543,14 @@ const BookDetailPage: React.FC = () => {
         onOpenAudio={hasAudio ? () => navigate(`/books/${bookIdNumber}/audio`) : undefined}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr,1.2fr]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(260px,320px),minmax(0,1fr)] lg:gap-5">
         <div
-          className="rounded-2xl border p-5"
+          className="rounded-2xl p-5"
           style={{
-            borderColor: "color-mix(in srgb, var(--c-border) 88%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--c-border) 56%, transparent)",
             backgroundColor:
-              "color-mix(in srgb, var(--c-surface-elevated) 95%, transparent)",
-            boxShadow: "var(--shadow-soft)",
+              "color-mix(in srgb, var(--c-surface-elevated) 95%, var(--c-surface))",
+            boxShadow: "0 14px 30px color-mix(in srgb, #2b1f14 8%, transparent)",
           }}
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -589,7 +589,12 @@ const BookDetailPage: React.FC = () => {
               type="button"
               onClick={submitRating}
               disabled={ratingLoading || ratingValue <= 0}
-              className="btn-primary disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-px disabled:opacity-60"
+              style={{
+                backgroundColor: "var(--c-accent)",
+                boxShadow:
+                  "0 12px 24px color-mix(in srgb, var(--c-accent) 30%, transparent)",
+              }}
             >
               {ratingLoading ? "Saqlanmoqda..." : "Reytingni saqlash"}
             </button>
@@ -597,12 +602,12 @@ const BookDetailPage: React.FC = () => {
         </div>
 
         <div
-          className="space-y-6 rounded-2xl border p-6"
+          className="space-y-6 rounded-2xl p-6"
           style={{
-            borderColor: "color-mix(in srgb, var(--c-border) 88%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--c-border) 56%, transparent)",
             backgroundColor:
-              "color-mix(in srgb, var(--c-surface-elevated) 96%, transparent)",
-            boxShadow: "var(--shadow-soft)",
+              "color-mix(in srgb, var(--c-surface-elevated) 96%, var(--c-surface))",
+            boxShadow: "0 16px 36px color-mix(in srgb, #2b1f14 9%, transparent)",
           }}
         >
           <div className="flex flex-col gap-2">
