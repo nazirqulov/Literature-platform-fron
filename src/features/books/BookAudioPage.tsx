@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
-  BookOpen,
   FastForward,
   Pause,
   Play,
@@ -10,6 +9,7 @@ import {
 } from "lucide-react";
 import { isAxiosError } from "axios";
 import api from "../../services/api";
+import BookCover from "../../shared/components/ui/BookCover";
 
 interface AuthorResponse {
   id?: number;
@@ -223,8 +223,14 @@ const BookAudioPage: React.FC = () => {
   useEffect(() => {
     if (!bookIdNumber) return;
     let cancelled = false;
+    const fallbackCover = () => setCoverUrl(resolveCoverUrl(book?.coverImage));
 
     const fetchCover = async () => {
+      if (book?.coverImage) {
+        fallbackCover();
+        return;
+      }
+
       try {
         const response = await api.get<Blob>(
           `/api/books/book-image/${bookIdNumber}`,
@@ -232,7 +238,15 @@ const BookAudioPage: React.FC = () => {
         );
         if (cancelled) return;
         if (!response.data || response.data.size === 0) {
-          setCoverUrl(resolveCoverUrl(book?.coverImage));
+          fallbackCover();
+          return;
+        }
+        if (
+          typeof response.data.type === "string" &&
+          response.data.type.length > 0 &&
+          !response.data.type.startsWith("image/")
+        ) {
+          fallbackCover();
           return;
         }
 
@@ -244,7 +258,7 @@ const BookAudioPage: React.FC = () => {
         setCoverUrl(objectUrl);
       } catch {
         if (!cancelled) {
-          setCoverUrl(resolveCoverUrl(book?.coverImage));
+          fallbackCover();
         }
       }
     };
@@ -448,41 +462,41 @@ const BookAudioPage: React.FC = () => {
         Orqaga
       </button>
 
-      <div className="glass rounded-3xl border border-[#E3DBCF] p-6 grid gap-6 lg:grid-cols-[240px,1fr]">
-        <div className="space-y-4">
-          <div className="h-72 w-full overflow-hidden rounded-2xl border border-[#E3DBCF] bg-white">
-            {coverUrl ? (
-              <img
-                src={coverUrl}
-                alt={book?.title ?? "Muqova"}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#F5F1E8] via-white to-[#EFE7DB] text-[#9A9A9A]">
-                <BookOpen size={34} />
-                <span className="text-xs font-semibold uppercase tracking-widest">
-                  Muqova mavjud emas
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="space-y-1 text-sm text-[#6B6B6B]">
-            <p className="text-base font-semibold text-[#2B2B2B]">
+      <div className="glass rounded-3xl border border-[#E3DBCF] p-5 md:p-6 lg:p-7">
+        <div className="grid gap-6 lg:grid-cols-[minmax(240px,280px),minmax(0,1fr)] lg:items-start">
+          <figure className="mx-auto w-full max-w-[280px] rounded-3xl border border-[#E3DBCF] bg-gradient-to-b from-white to-[#F6F1E9] p-3">
+            <BookCover
+              title={book?.title ?? "Muqova"}
+              src={coverUrl}
+              loading={!coverUrl}
+              ratioClassName="aspect-[2/3]"
+              fit="contain"
+              className="w-full"
+            />
+          </figure>
+
+          <header className="space-y-3">
+            <h1 className="text-2xl font-bold tracking-tight text-[#2B2B2B] md:text-3xl">
               {book?.title ?? "Kitob nomi ko'rsatilmagan"}
-            </p>
-            <p>
+            </h1>
+            <p className="text-base text-[#6B6B6B] md:text-lg">
               Muallif:{" "}
-              <span className="text-[#2B2B2B]">
+              <span className="font-medium text-[#2B2B2B]">
                 {book?.author?.name ?? "Muallif ko'rsatilmagan"}
               </span>
             </p>
+            {book?.description ? (
+              <p className="max-w-3xl text-sm leading-7 text-[#6B6B6B]">
+                {book.description}
+              </p>
+            ) : null}
             {bookError ? (
               <p className="text-xs text-[#C97B63]">{bookError}</p>
             ) : null}
-          </div>
+          </header>
         </div>
 
-        <div className="space-y-5">
+        <div className="mt-6 border-t border-[#E3DBCF] pt-6">
           {audioLoading ? (
             <div className="text-sm text-[#6B6B6B]">Audio yuklanmoqda...</div>
           ) : audioUrl ? (
@@ -511,8 +525,8 @@ const BookAudioPage: React.FC = () => {
                 }}
               />
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-center gap-5">
+              <div className="mx-auto max-w-3xl space-y-4">
+                <div className="flex items-center justify-center gap-4 md:gap-5">
                   <button
                     type="button"
                     onClick={() => handleSkip(-10)}
@@ -546,9 +560,7 @@ const BookAudioPage: React.FC = () => {
                     max={duration || 0}
                     step={1}
                     value={currentTime}
-                    onChange={(event) =>
-                      handleSeek(Number(event.target.value))
-                    }
+                    onChange={(event) => handleSeek(Number(event.target.value))}
                     className="w-full accent-[#6B4F3A]"
                   />
                   <div className="flex items-center justify-between text-xs text-[#6B6B6B]">
@@ -576,13 +588,11 @@ const BookAudioPage: React.FC = () => {
               </div>
             </>
           ) : (
-            <div className="text-sm text-[#9A9A9A]">
-              Audio fayl mavjud emas.
-            </div>
+            <div className="text-sm text-[#9A9A9A]">Audio fayl mavjud emas.</div>
           )}
 
           {audioError || audioResumeError ? (
-            <div className="text-xs text-[#C97B63]">
+            <div className="mt-3 text-xs text-[#C97B63]">
               {audioError ?? audioResumeError}
             </div>
           ) : null}
