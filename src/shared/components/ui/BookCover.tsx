@@ -21,6 +21,7 @@ const BookCover: React.FC<BookCoverProps> = ({
   framed = true,
 }) => {
   const [hasError, setHasError] = useState(false);
+
   useEffect(() => {
     setHasError(false);
   }, [src]);
@@ -33,31 +34,35 @@ const BookCover: React.FC<BookCoverProps> = ({
 
   return (
     <div
-      className={`relative isolate w-full overflow-hidden rounded-2xl border ${ratioClassName} ${className}`}
+      className={`relative isolate w-full overflow-hidden rounded-[24px] ${ratioClassName} ${className}`}
       style={{
-        borderColor: "color-mix(in srgb, var(--c-border) 86%, transparent)",
-        backgroundColor: "color-mix(in srgb, var(--c-surface) 90%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--c-border) 58%, transparent)",
+        backgroundColor:
+          "color-mix(in srgb, var(--c-surface-elevated) 95%, var(--c-surface))",
+        boxShadow: "0 18px 40px color-mix(in srgb, #2b1f14 9%, transparent)",
       }}
     >
       <div
-        className="absolute inset-0"
+        className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--c-accent-soft) 45%, transparent), transparent 55%)",
+            "radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--c-accent-soft) 45%, transparent), transparent 54%)",
         }}
       />
 
       {showImage ? (
-        <div className="relative z-[1] flex h-full w-full items-center justify-center p-3">
+        <div className="relative z-[1] flex h-full w-full items-center justify-center p-2.5">
           <img
             src={src ?? undefined}
             alt={title}
             loading="lazy"
-            className={`h-full w-full rounded-xl ${fitClass}`}
+            className={`h-full w-full rounded-[18px] ${fitClass}`}
             style={
               framed
                 ? {
-                    border: "1px solid color-mix(in srgb, var(--c-border) 58%, transparent)",
+                    backgroundColor: "color-mix(in srgb, var(--c-surface) 88%, transparent)",
+                    boxShadow:
+                      "0 1px 0 color-mix(in srgb, var(--c-border) 26%, transparent) inset",
                   }
                 : undefined
             }

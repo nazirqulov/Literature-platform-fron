@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, BookOpen, Headphones, Star } from "lucide-react";
+import { ArrowLeft, BookOpen, Headphones, Star, Tag, UserRound } from "lucide-react";
 import BadgeChip from "./BadgeChip";
 import BookCover from "./BookCover";
 import BookMeta, { type BookMetaItem } from "./BookMeta";
@@ -43,17 +43,23 @@ const BookDetailHero: React.FC<BookDetailHeroProps> = ({
       ? Math.max(0, Math.min(5, rating))
       : null;
   const showRating = safeRating !== null && (hasVotes || safeRating > 0);
+
   const normalizedDescription = description?.trim()
     ? description
     : "Kitob tavsifi mavjud emas.";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {onBack ? (
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--c-text-secondary)] transition hover:text-[color:var(--c-accent)]"
+          className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition hover:-translate-y-px"
+          style={{
+            borderColor: "color-mix(in srgb, var(--c-border) 74%, transparent)",
+            color: "var(--c-text-secondary)",
+            backgroundColor: "color-mix(in srgb, var(--c-surface) 84%, transparent)",
+          }}
         >
           <ArrowLeft size={16} />
           Orqaga
@@ -61,27 +67,36 @@ const BookDetailHero: React.FC<BookDetailHeroProps> = ({
       ) : null}
 
       <article
-        className="rounded-3xl border p-4 sm:p-5 lg:p-6"
+        className="relative overflow-hidden rounded-[28px] px-4 py-5 sm:px-6 sm:py-6 lg:px-7"
         style={{
-          borderColor: "color-mix(in srgb, var(--c-border) 88%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--c-border) 56%, transparent)",
           backgroundColor:
-            "color-mix(in srgb, var(--c-surface-elevated) 96%, transparent)",
-          boxShadow: "var(--shadow-soft)",
+            "color-mix(in srgb, var(--c-surface-elevated) 96%, var(--c-surface))",
+          boxShadow: "0 22px 52px color-mix(in srgb, #2b1f14 10%, transparent)",
         }}
       >
-        <div className="grid gap-5 lg:grid-cols-[minmax(220px,280px),1fr]">
-          <div className="mx-auto w-full max-w-[280px]">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(circle at 95% 0%, color-mix(in srgb, var(--c-accent-soft) 55%, transparent), transparent 43%)",
+          }}
+        />
+
+        <div className="relative z-[1] grid items-start gap-6 lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)]">
+          <div className="mx-auto w-full max-w-[260px]">
             <BookCover
               title={title}
               src={coverUrl}
               loading={loadingCover}
               ratioClassName="aspect-[3/4]"
               fit="contain"
+              framed={false}
             />
           </div>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
+          <div className="space-y-5">
+            <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 {showRating ? (
                   <BadgeChip variant="warning" className="gap-1.5">
@@ -92,61 +107,87 @@ const BookDetailHero: React.FC<BookDetailHeroProps> = ({
                 ) : (
                   <BadgeChip variant="neutral">Baholanmagan</BadgeChip>
                 )}
-                {categories.slice(0, 2).map((category) => (
-                  <BadgeChip key={category} variant="accent">
+
+                {categories.slice(0, 3).map((category) => (
+                  <BadgeChip key={category} variant="accent" className="max-w-[180px] truncate">
                     {category}
                   </BadgeChip>
                 ))}
               </div>
 
-              <h1 className="text-2xl font-bold leading-tight text-[color:var(--c-text-primary)] sm:text-3xl">
+              <h1 className="text-3xl font-bold leading-tight text-[color:var(--c-text-primary)] sm:text-4xl">
                 {title}
               </h1>
-              <p className="text-sm font-medium text-[color:var(--c-text-secondary)]">
-                Muallif:{" "}
-                <span className="text-[color:var(--c-text-primary)]">{author}</span>
+
+              <p className="inline-flex items-center gap-2 text-base font-medium text-[color:var(--c-text-secondary)]">
+                <UserRound size={16} className="text-[color:var(--c-text-muted)]" />
+                <span className="text-[color:var(--c-text-secondary)]">Muallif:</span>
+                <span className="font-semibold text-[color:var(--c-text-primary)]">{author}</span>
               </p>
 
               {subCategories.length > 0 ? (
-                <p className="text-xs text-[color:var(--c-text-muted)]">
-                  Janr: {subCategories.slice(0, 3).join(", ")}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--c-text-muted)]">
+                    <Tag size={13} />
+                    Janrlar:
+                  </span>
+                  {subCategories.slice(0, 4).map((subCategory) => (
+                    <span
+                      key={subCategory}
+                      className="rounded-full px-2.5 py-1 text-xs font-medium"
+                      style={{
+                        backgroundColor:
+                          "color-mix(in srgb, var(--c-accent-soft) 52%, transparent)",
+                        color: "var(--c-text-secondary)",
+                      }}
+                    >
+                      {subCategory}
+                    </span>
+                  ))}
+                </div>
               ) : null}
             </div>
 
-            <div
-              className="rounded-2xl border px-4 py-3"
+            <section
+              className="rounded-2xl px-4 py-4"
               style={{
-                borderColor: "color-mix(in srgb, var(--c-border) 82%, transparent)",
                 backgroundColor:
-                  "color-mix(in srgb, var(--c-surface) 82%, transparent)",
+                  "color-mix(in srgb, var(--c-surface) 80%, var(--c-surface-elevated))",
+                border: "1px solid color-mix(in srgb, var(--c-border) 46%, transparent)",
               }}
             >
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--c-text-muted)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--c-text-muted)]">
                 Tavsif
               </p>
-              <p className="mt-2 text-sm leading-6 text-[color:var(--c-text-secondary)]">
+              <p className="mt-2 text-sm leading-7 text-[color:var(--c-text-secondary)] sm:text-[15px]">
                 {normalizedDescription}
               </p>
-            </div>
+            </section>
 
-            <BookMeta items={metaItems} />
-
-            <div className="flex flex-wrap gap-3 pt-1">
-              <button type="button" onClick={onRead} className="btn-primary">
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={onRead}
+                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-px"
+                style={{
+                  backgroundColor: "var(--c-accent)",
+                  boxShadow: "0 12px 24px color-mix(in srgb, var(--c-accent) 32%, transparent)",
+                }}
+              >
                 <BookOpen size={16} />
                 Kitobni o'qish
               </button>
+
               {hasAudio && onOpenAudio ? (
                 <button
                   type="button"
                   onClick={onOpenAudio}
-                  className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition hover:-translate-y-px"
+                  className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition hover:-translate-y-px"
                   style={{
-                    borderColor: "color-mix(in srgb, var(--c-border) 88%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--c-border) 62%, transparent)",
                     color: "var(--c-text-secondary)",
                     backgroundColor:
-                      "color-mix(in srgb, var(--c-surface) 80%, transparent)",
+                      "color-mix(in srgb, var(--c-surface) 78%, var(--c-surface-elevated))",
                   }}
                 >
                   <Headphones size={16} />
@@ -154,6 +195,13 @@ const BookDetailHero: React.FC<BookDetailHeroProps> = ({
                 </button>
               ) : null}
             </div>
+
+            <section className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--c-text-muted)]">
+                Kitob ma'lumotlari
+              </p>
+              <BookMeta items={metaItems} />
+            </section>
           </div>
         </div>
       </article>

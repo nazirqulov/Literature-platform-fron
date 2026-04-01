@@ -35,6 +35,14 @@ type SizUchunSectionProps = {
   showAllLink?: boolean;
 };
 
+type BookDetailSnapshot = {
+  title?: string;
+  authorName?: string;
+  coverImage?: string | null;
+  averageRating?: number | null;
+  ratingCount?: number | null;
+};
+
 const SizUchunSection: React.FC<SizUchunSectionProps> = ({
   limit,
   layout = "carousel",
@@ -45,12 +53,7 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
   const [items, setItems] = useState<BookProgressResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [detailsById, setDetailsById] = useState<Record<number, {
-    title?: string;
-    authorName?: string;
-    coverImage?: string | null;
-    averageRating?: number | null;
-  }>>({});
+  const [detailsById, setDetailsById] = useState<Record<number, BookDetailSnapshot>>({});
   const enrichedIdsRef = useRef<Set<number>>(new Set());
   const [coversById, setCoversById] = useState<
     Record<number, string | null | undefined>
@@ -86,15 +89,7 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
     const idsToFetch = items
       .map((item) => item.bookId)
       .filter((id): id is number => typeof id === "number")
-      .filter((id) => !enrichedIdsRef.current.has(id))
-      .filter((id) => {
-        const item = items.find((entry) => entry.bookId === id);
-        if (!item) return false;
-        const missingTitle = !item.bookTitle;
-        const missingAuthor = !item.bookAuthors;
-        const missingCover = !item.bookCover;
-        return missingTitle || missingAuthor || missingCover;
-      });
+      .filter((id) => !enrichedIdsRef.current.has(id));
 
     if (idsToFetch.length === 0) return;
 
@@ -105,7 +100,7 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
             const { data } = await api.get(`/api/books/${id}`);
             return { id, data };
           } catch {
-            return null;
+            return { id, data: null };
           }
         }),
       );
@@ -113,19 +108,45 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
       setDetailsById((prev) => {
         const next = { ...prev };
         results.forEach((result) => {
-          if (!result) return;
           const detail =
-            (result.data?.data as { title?: string; author?: { name?: string }; coverImage?: string | null; averageRating?: number | null } | undefined) ??
-            (result.data?.book as { title?: string; author?: { name?: string }; coverImage?: string | null; averageRating?: number | null } | undefined) ??
-            (result.data as { title?: string; author?: { name?: string }; coverImage?: string | null; averageRating?: number | null });
+            (result.data?.data as
+              | {
+                  title?: string;
+                  author?: { name?: string };
+                  coverImage?: string | null;
+                  averageRating?: number | null;
+                  ratingCount?: number | null;
+                }
+              | undefined) ??
+            (result.data?.book as
+              | {
+                  title?: string;
+                  author?: { name?: string };
+                  coverImage?: string | null;
+                  averageRating?: number | null;
+                  ratingCount?: number | null;
+                }
+              | undefined) ??
+            (result.data as
+              | {
+                  title?: string;
+                  author?: { name?: string };
+                  coverImage?: string | null;
+                  averageRating?: number | null;
+                  ratingCount?: number | null;
+                }
+              | null);
+
           if (detail && typeof detail === "object") {
             next[result.id] = {
               title: detail.title,
               authorName: detail.author?.name,
               coverImage: detail.coverImage ?? null,
               averageRating: detail.averageRating ?? null,
+              ratingCount: detail.ratingCount ?? null,
             };
           }
+
           enrichedIdsRef.current.add(result.id);
         });
         return next;
@@ -243,15 +264,18 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
               typeof item.bookId === "number" &&
               coversById[item.bookId] === undefined &&
               !fallbackCover;
-            const parsedRating =
-              typeof item.userRating === "number"
-                ? item.userRating
-                : typeof detail?.averageRating === "number"
-                  ? detail.averageRating
-                  : NaN;
-            const ratingValue = Number.isFinite(parsedRating)
-              ? Math.max(0, Math.min(5, parsedRating))
-              : null;
+
+            // Barcha bo'limlarda bir xil ko'rsatish uchun global average rating ishlatiladi.
+            const ratingValue =
+              typeof detail?.averageRating === "number"
+                ? Math.max(0, Math.min(5, detail.averageRating))
+                : null;
+
+            const ratingCount =
+              typeof detail?.ratingCount === "number"
+                ? Math.max(0, Math.floor(detail.ratingCount))
+                : undefined;
+
             return (
               <BookCard
                 key={`${item.bookId ?? "book"}-${index}`}
@@ -261,6 +285,7 @@ const SizUchunSection: React.FC<SizUchunSectionProps> = ({
                 coverUrl={coverUrl}
                 loadingCover={isCoverLoading}
                 rating={ratingValue}
+                ratingCount={ratingCount}
                 className={layout === "grid" ? "w-full" : "w-[216px] shrink-0"}
               />
             );
