@@ -5,6 +5,51 @@ import api from "../../services/api";
 import { getAuthorInitials, resolveProfileUrl } from "../authors/authorUtils";
 import useAuthorProfileImages from "../authors/useAuthorProfileImages";
 
+const isValidDateParts = (year: number, month: number, day: number) => {
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  return (
+    candidate.getUTCFullYear() === year &&
+    candidate.getUTCMonth() === month - 1 &&
+    candidate.getUTCDate() === day
+  );
+};
+
+const normalizeDateToIso = (rawValue?: string | null) => {
+  const value = rawValue?.trim() ?? "";
+  if (!value) return "";
+
+  const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]);
+    const day = Number(isoMatch[3]);
+    if (isValidDateParts(year, month, day)) return value;
+    return "";
+  }
+
+  const localMatch = value.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (localMatch) {
+    const day = Number(localMatch[1]);
+    const month = Number(localMatch[2]);
+    const year = Number(localMatch[3]);
+    if (!isValidDateParts(year, month, day)) return "";
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  return "";
+};
+
+const validateDateOrThrow = (value: string, fieldLabel: string) => {
+  if (!value.trim()) return undefined;
+  const normalized = normalizeDateToIso(value);
+  if (!normalized) {
+    throw new Error(
+      `${fieldLabel} noto'g'ri formatda. 'yyyy-mm-dd' yoki 'dd.mm.yyyy' kiriting.`,
+    );
+  }
+  return normalized;
+};
+
 const AdminAuthorsPage: React.FC = () => {
   const [authors, setAuthors] = useState<AuthorResponse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -84,11 +129,21 @@ const AdminAuthorsPage: React.FC = () => {
       return;
     }
 
+    let birthDate: string | undefined;
+    let deathDate: string | undefined;
+    try {
+      birthDate = validateDateOrThrow(newAuthor.birthDate, "Tug'ilgan sana");
+      deathDate = validateDateOrThrow(newAuthor.deathDate, "Vafot sanasi");
+    } catch (error) {
+      toast.error((error as Error).message);
+      return;
+    }
+
     const payload: AuthorRequest = {
       name: newAuthor.name.trim(),
       biography: newAuthor.biography.trim() || undefined,
-      birthDate: newAuthor.birthDate || undefined,
-      deathDate: newAuthor.deathDate || undefined,
+      birthDate,
+      deathDate,
       nationality: newAuthor.nationality.trim() || undefined,
     };
 
@@ -115,11 +170,21 @@ const AdminAuthorsPage: React.FC = () => {
       return;
     }
 
+    let birthDate: string | undefined;
+    let deathDate: string | undefined;
+    try {
+      birthDate = validateDateOrThrow(editingAuthor.birthDate ?? "", "Tug'ilgan sana");
+      deathDate = validateDateOrThrow(editingAuthor.deathDate ?? "", "Vafot sanasi");
+    } catch (error) {
+      toast.error((error as Error).message);
+      return;
+    }
+
     const payload: AuthorRequest = {
       name: editingAuthor.name.trim(),
       biography: editingAuthor.biography?.trim() || undefined,
-      birthDate: editingAuthor.birthDate || undefined,
-      deathDate: editingAuthor.deathDate || undefined,
+      birthDate,
+      deathDate,
       nationality: editingAuthor.nationality?.trim() || undefined,
     };
 
@@ -397,7 +462,9 @@ const AdminAuthorsPage: React.FC = () => {
                   Tug'ilgan sana
                 </label>
                 <input
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="yyyy-mm-dd yoki dd.mm.yyyy"
                   value={newAuthor.birthDate}
                   onChange={(event) =>
                     setNewAuthor((prev) => ({
@@ -405,15 +472,23 @@ const AdminAuthorsPage: React.FC = () => {
                       birthDate: event.target.value,
                     }))
                   }
+                  onBlur={(event) => {
+                    const normalized = normalizeDateToIso(event.target.value);
+                    if (!normalized && event.target.value.trim()) return;
+                    setNewAuthor((prev) => ({ ...prev, birthDate: normalized }));
+                  }}
                   className="w-full rounded-lg border border-[#E3DBCF] bg-[#F5F1E8] px-3 py-2 text-sm text-[#2B2B2B]"
                 />
+                <p className="text-[11px] text-[#8A8A8A]">Masalan: 1941-08-05 yoki 05.08.1941</p>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-medium text-[#6B6B6B]">
                   Vafot sanasi
                 </label>
                 <input
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="yyyy-mm-dd yoki dd.mm.yyyy"
                   value={newAuthor.deathDate}
                   onChange={(event) =>
                     setNewAuthor((prev) => ({
@@ -421,8 +496,14 @@ const AdminAuthorsPage: React.FC = () => {
                       deathDate: event.target.value,
                     }))
                   }
+                  onBlur={(event) => {
+                    const normalized = normalizeDateToIso(event.target.value);
+                    if (!normalized && event.target.value.trim()) return;
+                    setNewAuthor((prev) => ({ ...prev, deathDate: normalized }));
+                  }}
                   className="w-full rounded-lg border border-[#E3DBCF] bg-[#F5F1E8] px-3 py-2 text-sm text-[#2B2B2B]"
                 />
+                <p className="text-[11px] text-[#8A8A8A]">Masalan: 2013-05-24 yoki 24.05.2013</p>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-medium text-[#6B6B6B]">
@@ -510,30 +591,50 @@ const AdminAuthorsPage: React.FC = () => {
                   Tug'ilgan sana
                 </label>
                 <input
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="yyyy-mm-dd yoki dd.mm.yyyy"
                   value={editingAuthor.birthDate ?? ""}
                   onChange={(event) =>
                     setEditingAuthor((prev) =>
                       prev ? { ...prev, birthDate: event.target.value } : prev,
                     )
                   }
+                  onBlur={(event) => {
+                    const normalized = normalizeDateToIso(event.target.value);
+                    if (!normalized && event.target.value.trim()) return;
+                    setEditingAuthor((prev) =>
+                      prev ? { ...prev, birthDate: normalized } : prev,
+                    );
+                  }}
                   className="w-full rounded-lg border border-[#E3DBCF] bg-[#F5F1E8] px-3 py-2 text-sm text-[#2B2B2B]"
                 />
+                <p className="text-[11px] text-[#8A8A8A]">Masalan: 1941-08-05 yoki 05.08.1941</p>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-medium text-[#6B6B6B]">
                   Vafot sanasi
                 </label>
                 <input
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="yyyy-mm-dd yoki dd.mm.yyyy"
                   value={editingAuthor.deathDate ?? ""}
                   onChange={(event) =>
                     setEditingAuthor((prev) =>
                       prev ? { ...prev, deathDate: event.target.value } : prev,
                     )
                   }
+                  onBlur={(event) => {
+                    const normalized = normalizeDateToIso(event.target.value);
+                    if (!normalized && event.target.value.trim()) return;
+                    setEditingAuthor((prev) =>
+                      prev ? { ...prev, deathDate: normalized } : prev,
+                    );
+                  }}
                   className="w-full rounded-lg border border-[#E3DBCF] bg-[#F5F1E8] px-3 py-2 text-sm text-[#2B2B2B]"
                 />
+                <p className="text-[11px] text-[#8A8A8A]">Masalan: 2013-05-24 yoki 24.05.2013</p>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-medium text-[#6B6B6B]">
