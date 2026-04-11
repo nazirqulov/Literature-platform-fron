@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Star } from "lucide-react";
+import { isAxiosError } from "axios";
 import { toast } from "react-toastify";
 import api from "../../services/api";
 import { useAuth } from "../../context/useAuth";
@@ -457,10 +458,19 @@ const BookDetailPage: React.FC = () => {
       toast.success(successMessage);
       myReviewPrefilledRef.current = true;
       await loadReviews(0, false);
-    } catch {
+    } catch (error) {
+      const backendMessage =
+        isAxiosError(error) && typeof error.response?.data === "object"
+          ? (error.response?.data as { message?: string })?.message
+          : undefined;
+      const isBadRequest = isAxiosError(error) && error.response?.status === 400;
+      const message = isBadRequest
+        ? "Yozgan izohingizda haqoratli va nomaqbul so'zlar deb topildi."
+        : backendMessage || "Review yuborishda xatolik yuz berdi.";
+
       setReviewStatus("error");
-      setReviewMessage("Review yuborishda xatolik yuz berdi.");
-      toast.error("Review yuborishda xatolik yuz berdi.");
+      setReviewMessage(message);
+      toast.error(message);
     } finally {
       setReviewSubmitting(false);
     }
