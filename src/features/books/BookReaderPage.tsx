@@ -387,72 +387,85 @@ const BookReaderPage: React.FC = () => {
   const zoomLabel = `${Math.round(zoom * 100)}%`;
   const canGoPrev = !isBusy && currentPage > 1;
   const canGoNext = !isBusy && numPages != null && currentPage < numPages;
+  const readerButtonClass =
+    "rounded-lg border border-[color:var(--c-border)] px-3 py-1.5 text-xs font-semibold text-[color:var(--c-text-secondary)] transition hover:bg-[color:color-mix(in_srgb,var(--c-accent-soft)_60%,transparent)] hover:text-[color:var(--c-text-primary)] disabled:opacity-60";
+  const readerAccentButtonClass =
+    "rounded-lg border border-[color:var(--c-border)] px-3 py-1.5 text-xs font-semibold text-[color:var(--c-accent)] transition hover:bg-[color:color-mix(in_srgb,var(--c-accent-soft)_60%,transparent)] hover:text-[color:var(--c-text-primary)] disabled:opacity-60";
+  const renderReaderControls = (className = "") => (
+    <div
+      className={`flex flex-col gap-3 rounded-2xl border border-[color:var(--c-border)] bg-[color:var(--c-surface-elevated)] p-4 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between ${className}`}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => goToPage(currentPage - 1)}
+          disabled={!canGoPrev}
+          className={readerAccentButtonClass}
+        >
+          Previous
+        </button>
+        <button
+          type="button"
+          onClick={() => goToPage(currentPage + 1)}
+          disabled={!canGoNext}
+          className={readerAccentButtonClass}
+        >
+          Next
+        </button>
+      </div>
+
+      <div className="text-center text-sm font-semibold text-[color:var(--c-text-primary)] sm:text-left">
+        {pageLabel}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+        <button
+          type="button"
+          onClick={() => void startSession(true)}
+          className={readerButtonClass}
+        >
+          Start reading
+        </button>
+        <button
+          type="button"
+          onClick={handleCloseReader}
+          className={readerButtonClass}
+        >
+          Close reader
+        </button>
+        <button
+          type="button"
+          onClick={zoomOut}
+          disabled={zoom <= MIN_ZOOM}
+          className={readerAccentButtonClass}
+        >
+          -
+        </button>
+        <button
+          type="button"
+          onClick={resetZoom}
+          className={readerButtonClass}
+        >
+          {zoomLabel}
+        </button>
+        <button
+          type="button"
+          onClick={zoomIn}
+          disabled={zoom >= MAX_ZOOM}
+          className={readerAccentButtonClass}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <section className="min-h-screen px-4 py-6">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4">
-        <div className="glass sticky top-16 z-40 flex flex-col gap-3 rounded-2xl border border-[#E3DBCF] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={!canGoPrev}
-              className="rounded-lg border border-[#E3DBCF] px-3 py-1.5 text-xs font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-60"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={!canGoNext}
-              className="rounded-lg border border-[#E3DBCF] px-3 py-1.5 text-xs font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-60"
-            >
-              Next
-            </button>
-          </div>
-
-          <div className="text-center text-sm font-semibold text-[#2B2B2B] sm:text-left">
-            {pageLabel}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-            <button
-              type="button"
-              onClick={() => void startSession(true)}
-              className="rounded-lg border border-[#E3DBCF] px-3 py-1.5 text-xs font-semibold text-[#6B6B6B] transition hover:bg-[#F5F1E8]"
-            >
-              Start reading
-            </button>
-            <button
-              type="button"
-              onClick={handleCloseReader}
-              className="rounded-lg border border-[#E3DBCF] px-3 py-1.5 text-xs font-semibold text-[#6B6B6B] transition hover:bg-[#F5F1E8]"
-            >
-              Close reader
-            </button>
-            <button
-              type="button"
-              onClick={zoomOut}
-              disabled={zoom <= MIN_ZOOM}
-              className="rounded-lg border border-[#E3DBCF] px-3 py-1.5 text-xs font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-60"
-            >
-              -
-            </button>
-            <button
-              type="button"
-              onClick={resetZoom}
-              className="rounded-lg border border-[#E3DBCF] px-3 py-1.5 text-xs font-semibold text-[#6B6B6B] transition hover:bg-[#F5F1E8]"
-            >
-              {zoomLabel}
-            </button>
-            <button
-              type="button"
-              onClick={zoomIn}
-              disabled={zoom >= MAX_ZOOM}
-              className="rounded-lg border border-[#E3DBCF] px-3 py-1.5 text-xs font-semibold text-[#6B4F3A] transition hover:bg-[#F5F1E8] disabled:opacity-60"
-            >
-              +
-            </button>
+    <section className="min-h-screen px-4 pb-6 pt-0">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 pt-[156px]">
+        <div className="fixed left-0 right-0 top-16 z-40 border-y border-[color:var(--c-border)] bg-[color:var(--c-bg)] px-4 py-3 shadow-[var(--shadow-soft)]">
+          <div className="relative mx-auto max-w-6xl">
+            {renderReaderControls()}
           </div>
         </div>
 

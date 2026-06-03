@@ -28,6 +28,7 @@ const Navbar: React.FC = () => {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
 
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const isReaderRoute = /^\/books\/[^/]+\/read$/.test(location.pathname);
   const isAuthPage = ["/login", "/register", "/verify-email", "/forgot-password"].includes(
     location.pathname,
   );
@@ -77,7 +78,7 @@ const Navbar: React.FC = () => {
 
   return (
     <nav
-      className="sticky top-0 z-50 border-b border-[color:var(--c-border)] backdrop-blur-md"
+      className={`${isReaderRoute ? "fixed left-0 right-0" : "sticky"} top-0 z-50 border-b border-[color:var(--c-border)] backdrop-blur-md`}
       style={{
         backgroundColor:
           "color-mix(in srgb, var(--c-surface-elevated) 88%, transparent)",
