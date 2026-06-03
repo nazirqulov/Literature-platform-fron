@@ -10,6 +10,7 @@ import {
 import { isAxiosError } from "axios";
 import api from "../../services/api";
 import BookCover from "../../shared/components/ui/BookCover";
+import { createImageDataUrl } from "../../shared/utils/imageBlob";
 
 interface AuthorResponse {
   id?: number;
@@ -49,6 +50,14 @@ const resolveCoverUrl = (value?: string | null) => {
   const baseUrl = api.defaults.baseURL ?? "http://localhost:8080";
   return new URL(value.replace(/^\/+/, ""), `${baseUrl}/`).toString();
 };
+
+const preloadImage = (src: string) =>
+  new Promise<void>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Image failed to load"));
+    image.src = src;
+  });
 
 const extractBookPayload = (data: unknown): BookDetail | null => {
   if (!data || typeof data !== "object") return null;
@@ -165,7 +174,7 @@ const BookAudioPage: React.FC = () => {
   const [book, setBook] = useState<BookDetail | null>(null);
   const [bookError, setBookError] = useState<string | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const coverObjectUrlRef = useRef<string | null>(null);
+  const coverImageRef = useRef<string | null>(null);
 
   const { audioUrl, loading: audioLoading, error: audioError } =
     useAudioFile(bookIdNumber);
@@ -223,14 +232,9 @@ const BookAudioPage: React.FC = () => {
   useEffect(() => {
     if (!bookIdNumber) return;
     let cancelled = false;
-    const fallbackCover = () => setCoverUrl(resolveCoverUrl(book?.coverImage));
+    const fallbackCover = () => setCoverUrl(resolveCoverUrl(coverImageRef.current));
 
     const fetchCover = async () => {
-      if (book?.coverImage) {
-        fallbackCover();
-        return;
-      }
-
       try {
         const response = await api.get<Blob>(
           `/api/books/book-image/${bookIdNumber}`,
@@ -241,21 +245,11 @@ const BookAudioPage: React.FC = () => {
           fallbackCover();
           return;
         }
-        if (
-          typeof response.data.type === "string" &&
-          response.data.type.length > 0 &&
-          !response.data.type.startsWith("image/")
-        ) {
-          fallbackCover();
-          return;
-        }
 
-        const objectUrl = URL.createObjectURL(response.data);
-        if (coverObjectUrlRef.current) {
-          URL.revokeObjectURL(coverObjectUrlRef.current);
-        }
-        coverObjectUrlRef.current = objectUrl;
-        setCoverUrl(objectUrl);
+        const dataUrl = await createImageDataUrl(response.data);
+        await preloadImage(dataUrl);
+        if (cancelled) return;
+        setCoverUrl(dataUrl);
       } catch {
         if (!cancelled) {
           fallbackCover();
@@ -268,16 +262,11 @@ const BookAudioPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [bookIdNumber, book?.coverImage]);
+  }, [bookIdNumber]);
 
   useEffect(() => {
-    return () => {
-      if (coverObjectUrlRef.current) {
-        URL.revokeObjectURL(coverObjectUrlRef.current);
-        coverObjectUrlRef.current = null;
-      }
-    };
-  }, []);
+    coverImageRef.current = book?.coverImage ?? null;
+  }, [book?.coverImage]);
 
   useEffect(() => {
     if (!bookIdNumber) {
@@ -462,20 +451,20 @@ const BookAudioPage: React.FC = () => {
         Orqaga
       </button>
 
-      <div className="glass rounded-3xl border border-[#E3DBCF] p-5 md:p-6 lg:p-7">
-        <div className="grid gap-6 lg:grid-cols-[minmax(240px,280px),minmax(0,1fr)] lg:items-start">
-          <figure className="mx-auto w-full max-w-[280px] rounded-3xl border border-[#E3DBCF] bg-gradient-to-b from-white to-[#F6F1E9] p-3">
+      <div className="glass rounded-3xl border border-[#E3DBCF] p-5 md:p-6">
+        <div className="grid gap-5 lg:grid-cols-[minmax(180px,220px),minmax(0,1fr)] lg:items-start">
+          <figure className="mx-auto w-full max-w-[210px] rounded-2xl border border-[#E3DBCF] bg-gradient-to-b from-white to-[#F6F1E9] p-2">
             <BookCover
               title={book?.title ?? "Muqova"}
               src={coverUrl}
               loading={!coverUrl}
-              ratioClassName="aspect-[2/3]"
+              ratioClassName="aspect-[3/4]"
               fit="contain"
               className="w-full"
             />
           </figure>
 
-          <header className="space-y-3">
+          <header className="space-y-2">
             <h1 className="text-2xl font-bold tracking-tight text-[#2B2B2B] md:text-3xl">
               {book?.title ?? "Kitob nomi ko'rsatilmagan"}
             </h1>
@@ -496,7 +485,7 @@ const BookAudioPage: React.FC = () => {
           </header>
         </div>
 
-        <div className="mt-6 border-t border-[#E3DBCF] pt-6">
+        <div className="mt-5 border-t border-[#E3DBCF] pt-5">
           {audioLoading ? (
             <div className="text-sm text-[#6B6B6B]">Audio yuklanmoqda...</div>
           ) : audioUrl ? (

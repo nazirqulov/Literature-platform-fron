@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import api from "../../services/api";
 import { useAuth } from "../../context/useAuth";
 import BookDetailHero from "../../shared/components/ui/BookDetailHero";
+import { createImageDataUrl } from "../../shared/utils/imageBlob";
 
 interface BookCategoryResponse {
   id?: number;
@@ -132,6 +133,14 @@ const resolveCoverUrl = (value?: string | null) => {
   return new URL(value.replace(/^\/+/, ""), `${baseUrl}/`).toString();
 };
 
+const preloadImage = (src: string) =>
+  new Promise<void>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Image failed to load"));
+    image.src = src;
+  });
+
 const extractBookPayload = (data: unknown): BookDetail | null => {
   if (!data || typeof data !== "object") return null;
   const typed = data as Record<string, unknown>;
@@ -159,7 +168,7 @@ const BookDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverLoading, setCoverLoading] = useState(false);
-  const coverObjectUrlRef = useRef<string | null>(null);
+  const coverImageRef = useRef<string | null>(initialBook?.coverImage ?? null);
 
   const [ratingValue, setRatingValue] = useState(0);
   const [ratingLoading, setRatingLoading] = useState(false);
@@ -177,7 +186,6 @@ const BookDetailPage: React.FC = () => {
   const [reviewsLoadingMore, setReviewsLoadingMore] = useState(false);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
   const [myReviewIds, setMyReviewIds] = useState<Set<number>>(new Set());
-  const [showAllReviews, setShowAllReviews] = useState(false);
   const reviewsRequestIdRef = useRef(0);
   const myReviewPrefilledRef = useRef(false);
 
@@ -256,9 +264,10 @@ const BookDetailPage: React.FC = () => {
   useEffect(() => {
     if (!bookIdNumber) return;
     let cancelled = false;
-    const fallbackCover = () => setCoverUrl(resolveCoverUrl(book?.coverImage));
+    const fallbackCover = () => setCoverUrl(resolveCoverUrl(coverImageRef.current));
 
     const fetchCover = async () => {
+      setCoverUrl(null);
       setCoverLoading(true);
       try {
         const response = await api.get<Blob>(
@@ -271,12 +280,10 @@ const BookDetailPage: React.FC = () => {
           return;
         }
 
-        const objectUrl = URL.createObjectURL(response.data);
-        if (coverObjectUrlRef.current) {
-          URL.revokeObjectURL(coverObjectUrlRef.current);
-        }
-        coverObjectUrlRef.current = objectUrl;
-        setCoverUrl(objectUrl);
+        const dataUrl = await createImageDataUrl(response.data);
+        await preloadImage(dataUrl);
+        if (cancelled) return;
+        setCoverUrl(dataUrl);
       } catch {
         if (!cancelled) {
           fallbackCover();
@@ -293,16 +300,11 @@ const BookDetailPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [bookIdNumber, book?.coverImage]);
+  }, [bookIdNumber]);
 
   useEffect(() => {
-    return () => {
-      if (coverObjectUrlRef.current) {
-        URL.revokeObjectURL(coverObjectUrlRef.current);
-        coverObjectUrlRef.current = null;
-      }
-    };
-  }, []);
+    coverImageRef.current = book?.coverImage ?? null;
+  }, [book?.coverImage]);
 
   const ratingAverage = resolveRatingValue(book);
   const ratingCount = resolveRatingCount(book);
@@ -512,7 +514,6 @@ const BookDetailPage: React.FC = () => {
   );
 
   const reviewList = sortedReviews;
-  const visibleReviews = showAllReviews ? reviewList : reviewList.slice(0, 5);
 
   if (loading) {
     return (
@@ -689,12 +690,8 @@ const BookDetailPage: React.FC = () => {
                 Hozircha reviewlar mavjud emas.
               </div>
             ) : (
-              <div
-                className={`space-y-3 ${
-                  showAllReviews ? "max-h-[340px] overflow-y-auto pr-1" : ""
-                }`}
-              >
-                {visibleReviews.map((review) => {
+              <div className="max-h-[360px] space-y-3 overflow-y-auto pr-2">
+                {reviewList.map((review) => {
                   const mine = isMyReview(review);
                   return (
                     <div
@@ -751,25 +748,7 @@ const BookDetailPage: React.FC = () => {
                       "color-mix(in srgb, var(--c-surface) 75%, transparent)",
                   }}
                 >
-                  {reviewsLoadingMore ? "Yuklanmoqda..." : "Ko'proq ko'rish"}
-                </button>
-              </div>
-            ) : null}
-
-            {reviewList.length > 5 ? (
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setShowAllReviews((prev) => !prev)}
-                  className="rounded-full border px-5 py-2 text-xs font-semibold transition"
-                  style={{
-                    borderColor: "color-mix(in srgb, var(--c-border) 86%, transparent)",
-                    color: "var(--c-accent)",
-                    backgroundColor:
-                      "color-mix(in srgb, var(--c-surface) 75%, transparent)",
-                  }}
-                >
-                  {showAllReviews ? "Yopish" : "Barchasini ko'rish"}
+                  {reviewsLoadingMore ? "Yuklanmoqda..." : "Ko'proq yuklash"}
                 </button>
               </div>
             ) : null}
